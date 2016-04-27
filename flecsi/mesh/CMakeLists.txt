@@ -51,6 +51,9 @@ if (ENABLE_PARTITION AND METIS_FOUND)
     cinch_add_unit(metis_partition_mesh_nodal
             SOURCES test/dolfin_triangle/test/metis_partition_mesh_nodal.cc
             LIBRARIES ${PARTITION_LIBRARIES})
+    cinch_add_unit(metis_partition_graph_kway
+            SOURCES test/dolfin_triangle/test/metis_partition_graph_kway.cc
+            LIBRARIES ${PARTITION_LIBRARIES})
 endif()
 
 cinch_add_unit(sagittarius
