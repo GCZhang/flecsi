@@ -26,12 +26,14 @@ set(utils_HEADERS
   id.h
   index_space.h
   iterator.h
+  set_intersection.h
   static_for.h     detail/static_for.h
   static_list.h
   tuple_for_each.h detail/tuple_for_each.h
   tuple_visit.h    detail/tuple_visit.h
   tuple_zip.h      detail/tuple_zip.h
   zip.h            detail/zip.h
+  TaskWrapper.h
   PARENT_SCOPE)
 
 if (ENABLE_STATIC_CONTAINER)
@@ -85,6 +87,9 @@ cinch_add_unit(tuple_visit
 
 cinch_add_unit(tuple_zip
   SOURCES test/tuple_zip.cc)
+  
+cinch_add_unit(TaskWrapper
+  SOURCES test/TaskWrapper.cc)
 
 if (ENABLE_STATIC_CONTAINER)
 cinch_add_unit(meta_container
