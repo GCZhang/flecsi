@@ -170,8 +170,10 @@ struct burton_cell_t
     \return A pair with a) the number of vertex collections making up the
       entity and b) the number of vertices per collection.
    */
-  virtual std::vector<id_t> create_entities(
-      size_t dim, id_t * e, id_t * v, size_t vertex_count){}
+  virtual
+  std::vector<size_t>
+  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c, flecsi::id_t * e)
+  {}
 
   /*!
     \brief create_bound_entities binds mesh entities across domains.
@@ -186,8 +188,11 @@ struct burton_cell_t
       binding and b) the number of entities per collection.
    */
   virtual std::vector<id_t> create_bound_entities(size_t from_domain,
-      size_t to_domain, size_t dim, id_t ** ent_ids, 
-      size_t * ent_counts, id_t * c){};
+      size_t to_domain, size_t dim, 
+      flecsi::id_t cell_id,
+      domain_connectivity<2>& primal_conn,
+      domain_connectivity<2>& domain_conn,
+      id_t * c){};
 
 }; // class burton_cell_t
 
@@ -217,9 +222,10 @@ public:
   /*!
     \brief create_entities function for burton_quadrilateral_cell_t.
    */
-  inline std::vector<id_t> create_entities(
-      size_t dim, id_t * e, id_t * v, size_t vertex_count)
-  {
+  std::vector<size_t>
+  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c, flecsi::id_t * e){
+    flecsi::id_t* v = c.get_entities(cell_id, 0);
+
     e[0] = v[0];
     e[1] = v[1];
 
@@ -280,69 +286,74 @@ public:
     \endverbatim
    */
   inline std::vector<id_t> create_bound_entities(size_t from_domain,
-      size_t to_domain, size_t dim, id_t ** ent_ids, 
-      size_t * ent_counts, id_t * c)
+      size_t to_domain, size_t dim, 
+      flecsi::id_t cell_id,
+      domain_connectivity<2>& primal_conn,
+      domain_connectivity<2>& domain_conn,
+      id_t * c)
   {
+    flecsi::id_t* v = primal_conn.get_entities(cell_id, 0);
+    flecsi::id_t* e = primal_conn.get_entities(cell_id, 1);
 
     switch (dim) {
       // Corners
-      case 1:
+      case 0:
         // corner 0
-        c[0] = ent_ids[0][0]; // vertex 0
-        c[1] = ent_ids[1][0]; // edge 0, abuts vertex 0
-        c[2] = ent_ids[1][3]; // edge 3, abuts vertex 0
+        c[0] = v[0]; // vertex 0
+        c[1] = e[0]; // edge 0, abuts vertex 0
+        c[2] = e[3]; // edge 3, abuts vertex 0
 
         // corner 1
-        c[3] = ent_ids[0][1]; // vertex 1
-        c[4] = ent_ids[1][0]; // edge 0, abuts vertex 1
-        c[5] = ent_ids[1][1]; // edge 1, abuts vertex 1
+        c[3] = v[1]; // vertex 1
+        c[4] = e[0]; // edge 0, abuts vertex 1
+        c[5] = e[1]; // edge 1, abuts vertex 1
 
         // corner 2
-        c[6] = ent_ids[0][2]; // vertex 2
-        c[7] = ent_ids[1][1]; // edge 1, abuts vertex 2
-        c[8] = ent_ids[1][2]; // edge 2, abuts vertex 2
+        c[6] = v[2]; // vertex 2
+        c[7] = e[1]; // edge 1, abuts vertex 2
+        c[8] = e[2]; // edge 2, abuts vertex 2
 
         // corner 3
-        c[9] = ent_ids[0][3]; // vertex 3
-        c[10] = ent_ids[1][2]; // edge 2, abuts vertex 3
-        c[11] = ent_ids[1][3]; // edge 3, abuts vertex 3
+        c[9] = v[3]; // vertex 3
+        c[10] = e[2]; // edge 2, abuts vertex 3
+        c[11] = e[3]; // edge 3, abuts vertex 3
 
         return {3, 3, 3, 3};
 
       // Wedges
-      case 2:
+      case 1:
 
         // wedge 0
-        c[0] = ent_ids[0][0]; // vertex 0
-        c[1] = ent_ids[1][3]; // edge 3
+        c[0] = v[0]; // vertex 0
+        c[1] = e[3]; // edge 3
 
         // wedge 1
-        c[2] = ent_ids[0][0]; // vertex 0
-        c[3] = ent_ids[1][0]; // edge 0
+        c[2] = v[0]; // vertex 0
+        c[3] = e[0]; // edge 0
 
         // wedge 2
-        c[4] = ent_ids[0][1]; // vertex 1
-        c[5] = ent_ids[1][0]; // edge 0
+        c[4] = v[1]; // vertex 1
+        c[5] = e[0]; // edge 0
 
         // wedge 3
-        c[6] = ent_ids[0][1]; // vertex 1
-        c[7] = ent_ids[1][1]; // edge 1
+        c[6] = v[1]; // vertex 1
+        c[7] = e[1]; // edge 1
 
         // wedge 4
-        c[8] = ent_ids[0][2]; // vertex 2
-        c[9] = ent_ids[1][1]; // edge 1
+        c[8] = v[2]; // vertex 2
+        c[9] = e[1]; // edge 1
 
         // wedge 5
-        c[10] = ent_ids[0][2]; // vertex 2
-        c[11] = ent_ids[1][2]; // edge 2
+        c[10] = v[2]; // vertex 2
+        c[11] = e[2]; // edge 2
 
         // wedge 6
-        c[12] = ent_ids[0][3]; // vertex 3
-        c[13] = ent_ids[1][2]; // edge 2
+        c[12] = v[3]; // vertex 3
+        c[13] = e[2]; // edge 2
 
         // wedge 7
-        c[14] = ent_ids[0][3]; // vertex 3
-        c[15] = ent_ids[1][3]; // edge 3
+        c[14] = v[3]; // vertex 3
+        c[15] = e[3]; // edge 3
 
         return {2, 2, 2, 2, 2, 2, 2, 2};
 
@@ -365,7 +376,7 @@ public:
   \tparam N The domain of the wedge.
  */
 class burton_wedge_t
-    : public mesh_entity_t<2, burton_mesh_traits_t::num_domains>
+    : public mesh_entity_t<1, burton_mesh_traits_t::num_domains>
 {
 public:
   burton_wedge_t(){}
@@ -464,7 +475,7 @@ private:
   \tparam N The domain of the corner.
  */
 class burton_corner_t
-    : public mesh_entity_t<1, burton_mesh_traits_t::num_domains>
+    : public mesh_entity_t<0, burton_mesh_traits_t::num_domains>
 {
 public:
 

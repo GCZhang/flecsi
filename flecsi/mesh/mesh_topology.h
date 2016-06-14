@@ -21,6 +21,45 @@
   \date Initial file creation: Sep 23, 2015
  */
 
+/*
+
+ Description of major features and terms specific to FleCSI:
+
+ mesh dimension MD - e.g: MD = 2 for a 2d mesh. We currently support 2d and 3d
+   meshes.
+
+ topological dimension D - the dimensionality associated with entities, 
+   e.g: D = 0 is interpreted as a vertex, D = 1 an edge or face for MD = 2, 
+   D = 2 is a cell for MD = 2 
+
+ domain M - a sub-mesh or mesh space that holds entities of various topological
+   dimension
+
+ connectivity - a directed connection or adjancy between entities of differing 
+   topological dimension in the same domain. e.g: D1 -> D2 (edges -> faces)
+   for MD = 3. Cell to vertex connectivity is supplied by the user and all
+   other connectivies are computed by the topology.
+
+ binding - a type of connectivity that connects entities of potentially 
+   differing topological dimension across two different domains
+
+ entity - an object associated with a topological dimension, e.g: cell. Each
+   entity has an associated integer id.
+
+ mesh topology - the top-level container for domains, entities,
+   and connectivities, referred to as the low-level interface
+
+ mesh policy - the top-level class that a specialization creates to 
+   parameterize the mesh topology to define such things as: mesh dimension,
+   number of domains, connectivity and binding pairs of interest, and entity
+   classes/types per each domain/topological dimension.
+
+ entity set - contains an iterable set of entities. Support set operations such
+   as intersection, union, etc. and functional operations like apply, map,
+   reduce, etc. to apply a custom function to the set.  
+
+*/
+
 #include <algorithm>
 #include <iostream>
 #include <array>
@@ -29,6 +68,7 @@
 #include <unordered_map>
 #include <functional>
 #include <map>
+#include <cstring>
 
 #include "flecsi/utils/common.h"
 #include "flecsi/utils/set_intersection.h"
@@ -36,6 +76,7 @@
 
 namespace flecsi
 {
+
 /*----------------------------------------------------------------------------*
  * class mesh_topology_t
  *----------------------------------------------------------------------------*/
@@ -89,6 +130,12 @@ class mesh_topology_t : public mesh_topology_base_t
     iterator & operator++()
     {
       ++index_;
+      return *this;
+    } // operator ++
+
+    iterator & operator--()
+    {
+      --index_;
       return *this;
     } // operator ++
 
@@ -159,6 +206,12 @@ class mesh_topology_t : public mesh_topology_base_t
     const_iterator & operator++()
     {
       ++index_;
+      return *this;
+    } // operator ++
+
+    const_iterator & operator--()
+    {
+      --index_;
       return *this;
     } // operator ++
 
@@ -318,7 +371,7 @@ class mesh_topology_t : public mesh_topology_base_t
   template<typename T>
   std::vector<entity_set> scatter(map_function<T> f) const {
 
-    std::unordered_map<T, id_vector_t> id_map;
+    std::map<T, id_vector_t> id_map;
     for (auto ent : *this)
       id_map[f(ent)].push_back(ent.id());
 
@@ -640,11 +693,18 @@ class mesh_topology_t : public mesh_topology_base_t
   //! Constructor
   mesh_topology_t()
   {
+    for (size_t from_domain = 0; from_domain < MT::num_domains; ++from_domain) {
+      for (size_t to_domain = 0; to_domain < MT::num_domains; ++to_domain) {
+        ms_.topology[from_domain][to_domain].init_(from_domain, to_domain);
+      }
+    }
+
     // initialize all lower connectivities because the user might 
     // specify different combinations of connections
-    for (size_t i = 1; i < MT::dimension+1; ++i)
+    for (size_t i = 1; i < MT::num_dimensions+1; ++i)
       for (size_t j = 0; j < i; ++j)
         get_connectivity_(0, i, j).init();
+
   } // mesh_topology_t()
 
   // The mesh retains ownership of the entities and deletes them
@@ -669,7 +729,7 @@ class mesh_topology_t : public mesh_topology_base_t
 
     id_t global_id = id_t::make<D, M>(ents.size(), partition_id);
 
-    ent->ids_[M] = global_id;
+    ent->template set_global_id<M>( global_id );
     ents.push_back(ent);
 
     auto & id_vec = ms_.id_vecs[M][D];
@@ -691,9 +751,9 @@ class mesh_topology_t : public mesh_topology_base_t
   } // init_cell
 
   template < size_t M, typename V >
-  void init_cell_(entity_type<MT::dimension, M> * cell, V && verts)
+  void init_cell_(entity_type<MT::num_dimensions, M> * cell, V && verts)
   {
-    auto & c = get_connectivity_(M, MT::dimension, 0);
+    auto & c = get_connectivity_(M, MT::num_dimensions, 0);
 
     assert(cell->template id<M>() == c.from_size() && "id mismatch");
 
@@ -755,10 +815,10 @@ class mesh_topology_t : public mesh_topology_base_t
     // std::cerr << "build: " << D << std::endl;
 
     // Sanity check
-    assert(D <= MT::dimension);
+    assert(D <= MT::num_dimensions);
 
     // Reference to storage from cells to the entity (to be created here).
-    connectivity_t & cell_to_entity = get_connectivity_(M, MT::dimension, D);
+    connectivity_t & cell_to_entity = get_connectivity_(M, MT::num_dimensions, D);
 
     // Storage for entity-to-vertex connectivity information.
     connection_vector_t entity_vertex_conn;
@@ -767,11 +827,13 @@ class mesh_topology_t : public mesh_topology_base_t
     size_t entity_id = 0;
     size_t max_cell_entity_conns = 1;
 
+    domain_connectivity<MT::num_dimensions> & dc = ms_.topology[M][M];
+
     // Get connectivity for cells to vertices.
-    connectivity_t & cell_to_vertex = get_connectivity_(M, MT::dimension, 0);
+    connectivity_t & cell_to_vertex = dc.template get<MT::num_dimensions>(0);
     assert(!cell_to_vertex.empty());
 
-    const size_t _num_cells = num_entities<MT::dimension, M>();
+    const size_t _num_cells = num_entities<MT::num_dimensions, M>();
 
     // Storage for cell-to-entity connectivity information.
     connection_vector_t cell_entity_conn(_num_cells);
@@ -788,8 +850,8 @@ class mesh_topology_t : public mesh_topology_base_t
 
     for (size_t c = 0; c < _num_cells; ++c) {
       // Get the cell object
-      auto cell = static_cast<entity_type<MT::dimension, M> *>(
-          ms_.entities[M][MT::dimension][c]);
+      auto cell = static_cast<entity_type<MT::num_dimensions, M> *>(
+          ms_.entities[M][MT::num_dimensions][c]);
       
       id_t cell_id = cell->template global_id<M>();
 
@@ -809,8 +871,8 @@ class mesh_topology_t : public mesh_topology_base_t
       // p.first:   The number of entities per cell.
       // p.second:  A std::vector of id_t containing the ids of the
       //            vertices that define the entity.
-      auto sv =
-          cell->create_entities(D, entity_vertices.data(), vertices, end_index);
+      auto sv = 
+        cell->template create_entities(cell_id, D, dc, entity_vertices.data());
 
       size_t n = sv.size();
 
@@ -846,21 +908,25 @@ class mesh_topology_t : public mesh_topology_base_t
           max_cell_entity_conns = 
             std::max(max_cell_entity_conns, conns.size());
 
+          id_t global_id = id_t::make<M>(D, entity_id);
+          
+          auto ent = MT::template create_entity<M, D>(this, m);
+          ent->template set_global_id<M>( global_id );
+          
+          ms_.entities[M][D].push_back(ent);
+          ms_.id_vecs[M][D].push_back(global_id);
+
           // A new entity was added, so we advance the id counter.
           ++entity_id;
         } // if
       } // for
     } // for
 
-    // This call will create the entity objects in the mesh (The above
-    // logic only defines the indices and connectivity.)
-    cell_to_entity.init_create<MT, M, D>(
-        ms_.id_vecs[M][D], ms_.entities[M][D], cell_entity_conn, *this);
-
     // Set the connectivity information from the created entities to
     // the vertices.
-    connectivity_t & entity_to_vertex = get_connectivity_(M, D, 0);
+    connectivity_t & entity_to_vertex = dc.template get<D>(0);
     entity_to_vertex.init(entity_vertex_conn);
+    cell_to_entity.init(cell_entity_conn);
   } // build_connectivity
 
   /*!
@@ -1028,18 +1094,18 @@ class mesh_topology_t : public mesh_topology_base_t
     // if we don't have cell -> vertex connectivities, then
     // try building cell -> vertex connectivity through the
     // faces (3d) or edges(2d)
-    static_assert( MT::dimension <= 3, 
+    static_assert( MT::num_dimensions <= 3, 
                    "this needs to be re-thought for higher dimensions" );
 
-    if ( get_connectivity_(M, MT::dimension, 0).empty() ) {
-      assert( !get_connectivity_(M, MT::dimension-1, 0).empty() && 
+    if ( get_connectivity_(M, MT::num_dimensions, 0).empty() ) {
+      assert( !get_connectivity_(M, MT::num_dimensions-1, 0).empty() && 
               " need at least edges(2d)/faces(3) -> vertex connectivity" );
       // assume we have cell -> faces, so invert it to get faces -> cells
-      transpose<M, M, MT::dimension-1, MT::dimension>();
+      transpose<M, M, MT::num_dimensions-1, MT::num_dimensions>();
       // invert faces -> vertices to get vertices -> faces
-      transpose<M, M, 0, MT::dimension-1>();
+      transpose<M, M, 0, MT::num_dimensions-1>();
       // build cells -> vertices via intersections with faces
-      intersect<M, M, MT::dimension, 0, MT::dimension-1>();
+      intersect<M, M, MT::num_dimensions, 0, MT::num_dimensions-1>();
     }
 
     // Check if we need to build entities, e.g: edges or faces
@@ -1063,9 +1129,9 @@ class mesh_topology_t : public mesh_topology_base_t
     } else {
        if (FD == 0 && TD == 0) {
          // compute vertex to vertex connectivities through shared cells.
-         compute_connectivity<M, FD, MT::dimension>();
-         compute_connectivity<M, MT::dimension, TD>();
-         intersect<M, M, FD, TD, MT::dimension>();
+         compute_connectivity<M, FD, MT::num_dimensions>();
+         compute_connectivity<M, MT::num_dimensions, TD>();
+         intersect<M, M, FD, TD, MT::num_dimensions>();
        } else {
          // computer connectivities through shared vertices.
          compute_connectivity<M, FD, 0>();
@@ -1075,34 +1141,86 @@ class mesh_topology_t : public mesh_topology_base_t
     } // if
   } // compute_connectivity
 
-  template <size_t FM, size_t TM, size_t FD, size_t TD>
-  void compute_bindings()
+  /*!
+    if the to-dimension is larger than the from-dimension, build the bindings 
+    using the create_bound_entities functionality
+  */
+  template <
+    size_t FM, size_t TM, size_t FD, size_t TD,
+    typename std::enable_if< (FM < TM) >::type* = nullptr
+  >
+  void _compute_bindings()
   {
-    connectivity_t & out_conn = get_connectivity_(FM, TM, FD, TD);
 
-    if (!out_conn.empty()) {
-      return;
-    } // if
+    // if the connectivity for a transpose exists, do it
+    if( !get_connectivity_(TM, FM, TD, FD).empty() )
+      transpose<FM, TM, FD, TD>();
 
-    if (FD <= TD) {
-      connectivity_t & trans_conn = get_connectivity_(TM, FM, TD, FD);
-      if(!trans_conn.empty() && 
-         !ms_.entities[FD].empty() &&
-         !ms_.entities[TD].empty()){
-        transpose<FM, TM, FD, TD>();
-        return;        
-      }
-    }
-
-    if (FD == TD) {
-      connectivity_t & out_conn = get_connectivity_(FM, TM, FD, TD);
-    }
-
-    if (ms_.entities[TM][TD].empty()) {
+    // otherwise try building the connectivity directly
+    else if (num_entities_(TD, TM) == 0)
       build_bindings<FM, TM, TD>();
-    }
 
   } // compute_bindings
+
+
+  /*!
+    if the from-dimension is larger than the to-dimension, we want
+    to transpose.  So make sure the opposite connectivity exists first
+  */
+  template <
+    size_t FM, size_t TM, size_t FD, size_t TD,
+    typename = typename std::enable_if< (FM > TM) >::type
+  >
+  void _compute_bindings()
+  {
+
+    // build the opposite connectivity first
+    _compute_bindings< TM, FM, TD, FD>();
+
+    // now apply a transpose to get the requested connectivity
+    transpose<FM, TM, FD, TD>();
+
+  } // compute_bindings
+
+  /*!
+    in the odd case the from-dimension matches the to-dimension, try and 
+    build the connectivity between the two
+  */
+  template < size_t FM, size_t TM, size_t FD, size_t TD >
+  typename std::enable_if< (FM == TM) >::type
+  _compute_bindings()
+  {
+
+    // compute connectivities through shared vertices at the at the lowest
+    // dimension ( doesn't matter which one really )
+    _compute_bindings<0, TM, 0, FD>();
+    _compute_bindings<0, TM, 0, TD>();
+    
+    // now try and transpose it
+    auto & trans_conn = get_connectivity_(TM, FM, TD, FD);
+    if( !trans_conn.empty() )
+      transpose<FM, TM, FD, TD>();
+
+  } // compute_bindings
+
+
+  /*!
+    Main driver for computing bindings
+  */
+  template < size_t FM, size_t TM, size_t FD, size_t TD >
+  void compute_bindings() 
+  {
+    // std::cerr << "compute: , dom " << FM << " -> " << TM 
+    //           <<  ", dim " << FD << " -> " << TD << std::endl;
+
+    // check if requested connectivity is already there, nothing to do
+    connectivity_t & out_conn = get_connectivity_(FM, TM, FD, TD);
+    
+    if (!out_conn.empty()) return;
+    
+    _compute_bindings< FM, TM, FD, TD >();
+
+  }
 
   /*!
     Build bindings associated with a from/to domain and topological dimension.
@@ -1112,29 +1230,39 @@ class mesh_topology_t : public mesh_topology_base_t
   template <size_t FM, size_t TM, size_t TD>
   void build_bindings()
   {
+
+    // std::cerr << "build bindings: dom " << FM << " -> " << TM 
+    //           << " dim " << TD << std::endl;
+
     // Sanity check
-    static_assert(TD <= MT::dimension, "invalid dimension");
+    static_assert(TD <= MT::num_dimensions, "invalid dimension");
 
     // Helper variables
     size_t entity_id = 0;
     size_t max_cell_conns = 1;
-    const size_t _num_cells = num_entities<MT::dimension, FM>();
+    const size_t _num_cells = num_entities<MT::num_dimensions, FM>();
 
     // Storage for cell connectivity information
     connection_vector_t cell_conn(_num_cells);
 
     // Get cell definitions from domain 0
     using ent_vec_t = entity_vector_t<MT::num_domains>;
-    ent_vec_t & cells = ms_.entities[FM][MT::dimension];
+    ent_vec_t & cells = ms_.entities[FM][MT::num_dimensions];
 
     static constexpr size_t M0 = 0;
 
-    for (size_t i = 0; i < MT::dimension; ++i) {
+    for (size_t i = 0; i < MT::num_dimensions; ++i) {
       get_connectivity_<TM, FM, TD>(i).init();
     }
+    for (size_t i = 0; i < TD; ++i) {
+      get_connectivity_(TM, TM, TD, i).init();
+    }
 
-    std::array<id_t *, MT::dimension> primal_ids;
-    std::array<size_t, MT::dimension> num_primal_ids;
+    std::array<id_t *, MT::num_dimensions> primal_ids;
+    std::array<size_t, MT::num_dimensions> num_primal_ids;
+
+    std::array<id_t *, MT::num_dimensions> domain_ids;
+    std::array<size_t, MT::num_dimensions> num_domain_ids;
 
     // This buffer should be large enough to hold all entities
     // that potentially need to be created
@@ -1146,21 +1274,18 @@ class mesh_topology_t : public mesh_topology_base_t
       id_vector_map_t entity_ids_map;
 
       // Get a cell object.
-      auto cell = static_cast<entity_type<MT::dimension, M0> *>(c);
+      auto cell = static_cast<entity_type<MT::num_dimensions, M0> *>(c);
       id_t cell_id = cell->template global_id<FM>();
 
-      // Get ids of entities with at least this dimension
-      for (size_t dim = 0; dim < MT::dimension; ++dim) {
-        auto & c = get_connectivity_<FM, FM, MT::dimension>(dim);
-        primal_ids[dim] = c.get_entities( cell_id.entity(), num_primal_ids[dim] );
-      } // for
+      domain_connectivity<MT::num_dimensions> & primal_conn = ms_.topology[FM][FM];
+      domain_connectivity<MT::num_dimensions> & domain_conn = ms_.topology[FM][TM];
 
       // p.first:   The number of entities per cell.
       // p.second:  A std::vector of id_t containing the ids of the
       //            entities that define the bound entity.
 
       auto sv = cell->create_bound_entities(
-        FM, TM, TD, primal_ids.data(), num_primal_ids.data(), entity_ids.data() );
+        FM, TM, TD, cell_id, primal_conn, domain_conn, entity_ids.data());
 
       size_t n = sv.size();
 
@@ -1180,19 +1305,42 @@ class mesh_topology_t : public mesh_topology_base_t
         conns.push_back(create_id);
 
         uint32_t dim_flags = 0;
+        uint32_t dom_flags = 0;
+        size_t num_vertices = 0;
+
 
         for (size_t k = 0; k < m; ++k) {
           id_t global_id = entity_ids[pos + k];
-
-          get_connectivity_<TM, FM, TD>(global_id.dimension()).push(global_id);
-          dim_flags |= 1U << global_id.dimension();
+          auto dim = global_id.dimension();
+          auto dom = global_id.domain();
+          get_connectivity_(TM, dom, TD, dim).push(global_id);
+          if ( dom == FM ) {
+            dim_flags |= 1U << dim;
+            num_vertices += dim == 0 ? 1 : 0;
+          }
+          else 
+            dom_flags |= 1U << dim;
         }
 
-        for (size_t i = 0; i < MT::dimension; ++i) {
+        for (size_t i = 0; i < MT::num_dimensions; ++i) {
           if (dim_flags & (1U << i)) {
             get_connectivity_<TM, FM, TD>(i).end_from();
           }
         }
+
+        for (size_t i = 0; i < TD; ++i) {
+          if (dom_flags & (1U << i)) {
+            get_connectivity_(TM, TM, TD, i).end_from();
+          }
+        }
+
+        id_t global_id = id_t::make<TM>(TD, entity_id);
+        
+        auto ent = MT::template create_entity<TM, TD>(this, num_vertices);
+        ent->template set_global_id<TM>( global_id );
+        
+        ms_.entities[TM][TD].push_back(ent);
+        ms_.id_vecs[TM][TD].push_back(global_id);
 
         ++entity_id;
 
@@ -1201,15 +1349,8 @@ class mesh_topology_t : public mesh_topology_base_t
     } // for
 
     // Reference to storage from cells to the entity (to be created here).
-    connectivity_t & cell_out = get_connectivity_(FM, TM, MT::dimension, TD);
-
-    if (ms_.entities[TM][TD].empty()) {
-      // Create the entity objects
-      cell_out.init_create<MT, TM, TD>(
-          ms_.id_vecs[TM][TD], ms_.entities[TM][TD], cell_conn, *this);
-    } else {
-      cell_out.init(cell_conn);
-    }
+    connectivity_t & cell_out = get_connectivity_(FM, TM, MT::num_dimensions, TD);
+    cell_out.init(cell_conn);
 
   } // build_bindings
 
@@ -1297,11 +1438,9 @@ class mesh_topology_t : public mesh_topology_base_t
   const connectivity_t & get_connectivity_(size_t from_domain, size_t to_domain,
       size_t from_dim, size_t to_dim) const
   {
-    assert(from_dim < ms_.topology[from_domain][to_domain].size() &&
-        "invalid from_dim");
-    auto & t = ms_.topology[from_domain][to_domain][from_dim];
-    assert(to_dim < t.size() && "invalid to_dim");
-    return t[to_dim];
+    assert(from_domain < MT::num_domains && "invalid from domain");
+    assert(to_domain < MT::num_domains && "invalid to domain");
+    return ms_.topology[from_domain][to_domain].get(from_dim, to_dim);
   } // get_connectivity
 
   /*!
@@ -1311,11 +1450,9 @@ class mesh_topology_t : public mesh_topology_base_t
   connectivity_t & get_connectivity_(
       size_t from_domain, size_t to_domain, size_t from_dim, size_t to_dim)
   {
-    assert(from_dim < ms_.topology[from_domain][to_domain].size() &&
-        "invalid from_dim");
-    auto & t = ms_.topology[from_domain][to_domain][from_dim];
-    assert(to_dim < t.size() && "invalid to_dim");
-    return t[to_dim];
+    assert(from_domain < MT::num_domains && "invalid from domain");
+    assert(to_domain < MT::num_domains && "invalid to domain");
+    return ms_.topology[from_domain][to_domain].get(from_dim, to_dim);
   } // get_connectivity
 
   /*!
@@ -1325,10 +1462,7 @@ class mesh_topology_t : public mesh_topology_base_t
   template <size_t FM, size_t TM, size_t FD>
   connectivity_t & get_connectivity_(size_t to_dim)
   {
-    assert(FD < ms_.topology[FM][TM].size() && "invalid from_dim");
-    auto & t = ms_.topology[FM][TM][FD];
-    assert(to_dim < t.size() && "invalid to_dim");
-    return t[to_dim];
+    return ms_.topology[FM][TM].template get<FD>(to_dim);
   } // get_connectivity
 
   /*!
@@ -1338,7 +1472,7 @@ class mesh_topology_t : public mesh_topology_base_t
   template <size_t FM, size_t TM, size_t FD, size_t TD>
   connectivity_t & get_connectivity_()
   {
-    return ms_.topology[FM][TM][FD][TD];
+    return ms_.topology[FM][TM].template get<FD, TD>();
   } // get_connectivity
 
   /*!
@@ -1357,19 +1491,8 @@ class mesh_topology_t : public mesh_topology_base_t
     return get_connectivity_(domain, domain, from_dim, to_dim);
   } // get_connectivity
 
-  size_t topological_dimension() const override { return MT::dimension; }
-  /*!
-    This method should be called to construct and entity rather than
-    calling the constructor directly. This way, the ability to have
-    extra initialization behavior is reserved.
-  */
-  template <class T, class... S>
-  T * make(S &&... args)
-  {
-    T * entity = new T(std::forward<S>(args)...);
-    return entity;
-  } // make
-
+  size_t topological_dimension() const override { return MT::num_dimensions; }
+  
   template <size_t M = 0>
   const entity_vector_t<MT::num_domains> & get_entities_(size_t dim) const
   {
@@ -1437,7 +1560,7 @@ class mesh_topology_t : public mesh_topology_base_t
   template <size_t D, size_t FM = 0, size_t TM = FM, class E>
   decltype(auto) entities(domain_entity<FM, E> & e) const
   {
-    return entities<D, FM, TM>(e.entity()());
+    return entities<D, FM, TM>(e.entity());
   } // entities
 
   /*!
@@ -1506,6 +1629,41 @@ class mesh_topology_t : public mesh_topology_base_t
     return id_range(c.get_entities(), fv[e->template id<FM>()],
         fv[e->template id<FM>() + 1]);
   } // entities
+
+
+
+  /*!
+    Get the entities of topological dimension D connected to another entity
+    by specified connectivity from domain FM and to domain TM.
+  */
+  template <size_t D, size_t FM, size_t TM = FM, class E>
+  void reverse_entities(E * e)
+  {
+    auto & c = get_connectivity(FM, TM, E::dimension, D);
+    assert(!c.empty() && "empty connectivity");
+    c.reverse_entities( e->template id<FM>() );
+  } // entities
+
+  /*!
+    Get the entities of topological dimension D connected to another entity
+    by specified connectivity from domain FM and to domain TM.
+  */
+  template <size_t D, size_t FM = 0, size_t TM = FM, class E>
+  void reverse_entities(domain_entity<FM, E> & e)
+  {
+    return reverse_entities<D, FM, TM>(e.entity());
+  } // entities
+
+  void
+  set_entity_ids_(size_t domain, size_t dim, id_vector_t && v) override{
+    ms_.id_vecs[domain][dim] = move(v);
+  }
+
+  void
+  set_entities_(size_t domain, size_t dim, void* v) override{
+    auto ents = static_cast<entity_vector_t<MT::num_domains>*>(v);
+    ms_.entities[domain][dim] = move(*ents);
+  }
 
   template<typename I>
   void compute_graph_partition(
@@ -1594,21 +1752,132 @@ class mesh_topology_t : public mesh_topology_base_t
                 << std::endl;
       for (size_t to_domain = 0; to_domain < MT::num_domains; ++to_domain) {
         std::cout << "========== to domain: " << to_domain << std::endl;
-        size_t n = ms_.topology[from_domain][to_domain].size();
-        for (size_t i = 0; i < n; ++i) {
-          auto & ci = ms_.topology[from_domain][to_domain][i];
-          for (size_t j = 0; j < ci.size(); ++j) {
-            auto & cj = ci[j];
-            std::cout << "------------- " << i << " -> " << j << std::endl;
-            cj.dump();
-          }
-        }
+        ms_.topology[from_domain][to_domain].dump();
       }
     }
   } // dump
 
+  char* serialize(uint64_t& size){
+    const size_t alloc_size = 1048576;
+    size = alloc_size;
+
+    char* buf = (char*)std::malloc(alloc_size);
+    uint64_t pos = 0;
+    
+    uint32_t num_domains = MT::num_domains;
+    std::memcpy(buf + pos, &num_domains, sizeof(num_domains));
+    pos += sizeof(num_domains);
+
+    uint32_t num_dimensions = MT::num_dimensions;
+    std::memcpy(buf + pos, &num_dimensions, sizeof(num_dimensions));
+    pos += sizeof(num_dimensions);
+
+    for(size_t domain = 0; domain < MT::num_domains; ++domain){
+      for(size_t dimension = 0; dimension <= MT::num_dimensions; ++dimension){
+        uint64_t num_entities = ms_.entities[domain][dimension].size();
+        std::memcpy(buf + pos, &num_entities, sizeof(num_entities));
+        pos += sizeof(num_entities);
+      }
+    }
+
+    for(size_t from_domain = 0; from_domain < MT::num_domains; ++from_domain){
+      for(size_t to_domain = 0; to_domain < MT::num_domains; ++to_domain){
+
+        auto& dc = ms_.topology[from_domain][to_domain];
+
+        for(size_t from_dim = 0; from_dim <= MT::num_dimensions; ++from_dim){
+          for(size_t to_dim = 0; to_dim <= MT::num_dimensions; ++to_dim){
+            connectivity_t& c = dc.get(from_dim, to_dim);
+
+            auto& tv = c.to_id_vec();
+            uint64_t num_to = tv.size();
+            std::memcpy(buf + pos, &num_to, sizeof(num_to));
+            pos += sizeof(num_to);
+
+            size_t bytes = num_to * sizeof(id_vector_t::value_type);
+
+            if(size - pos < bytes){
+              size += bytes + alloc_size;
+              buf = (char*)std::realloc(buf, size);
+            }
+
+            std::memcpy(buf + pos, tv.data(), bytes);
+            pos += bytes;
+
+            auto& fv = c.from_index_vec();
+            uint64_t num_from = fv.size();
+            std::memcpy(buf + pos, &num_from, sizeof(num_from));
+            pos += sizeof(num_from);
+
+            bytes = num_from * sizeof(index_vector_t::value_type);
+
+            if(size - pos < bytes){
+              size += bytes + alloc_size;
+              buf = (char*)std::realloc(buf, size);
+            }
+
+            std::memcpy(buf + pos, fv.data(), bytes);
+            pos += bytes;
+          }
+        }
+      }
+    }
+
+    size = pos;
+
+    return buf;
+  }
+
+  void unserialize(char* buf){
+    uint64_t pos = 0;
+
+    uint32_t num_domains;
+    std::memcpy(&num_domains, buf + pos, sizeof(num_domains));
+    pos += sizeof(num_domains);
+    assert(num_domains == MT::num_domains && "domain size mismatch");
+
+    uint32_t num_dimensions;
+    std::memcpy(&num_dimensions, buf + pos, sizeof(num_dimensions));
+    pos += sizeof(num_dimensions);
+    assert(num_dimensions == MT::num_dimensions && "dimension size mismatch");
+
+    unserialize_domains_<MT, MT::num_domains, MT::num_dimensions, 0>::
+      unserialize(*this, buf, pos);
+
+    for(size_t from_domain = 0; from_domain < MT::num_domains; ++from_domain){
+      for(size_t to_domain = 0; to_domain < MT::num_domains; ++to_domain){
+
+        auto& dc = ms_.topology[from_domain][to_domain];
+
+        for(size_t from_dim = 0; from_dim <= MT::num_dimensions; ++from_dim){
+          for(size_t to_dim = 0; to_dim <= MT::num_dimensions; ++to_dim){
+            connectivity_t& c = dc.get(from_dim, to_dim);
+    
+            auto& tv = c.to_id_vec();
+            uint64_t num_to;
+            std::memcpy(&num_to, buf + pos, sizeof(num_to));
+            pos += sizeof(num_to);
+            auto ta = (id_vector_t::value_type*)(buf + pos); 
+            tv.resize(num_to);
+            tv.assign(ta, ta + num_to);
+            pos += num_to * sizeof(id_vector_t::value_type);
+
+            auto& fv = c.from_index_vec();
+            uint64_t num_from;
+            std::memcpy(&num_from, buf + pos, sizeof(num_from));
+            pos += sizeof(num_from);
+            auto fa = (index_vector_t::value_type*)(buf + pos); 
+            fv.resize(num_from);
+            fv.assign(fa, fa + num_from);
+            pos += num_from * sizeof(index_vector_t::value_type);            
+          }
+        }
+      }
+    }
+  }
+
  private:
-  mesh_storage_t<MT::dimension, MT::num_domains> ms_;
+  mesh_storage_t<MT::num_dimensions, MT::num_domains> ms_;
 
 }; // class mesh_topology_t
 

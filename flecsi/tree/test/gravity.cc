@@ -2,10 +2,21 @@
 #include <iostream>
 
 #include "flecsi/tree/tree_topology.h"
+#include "flecsi/concurrency/concurrency.h"
 
 using namespace std;
 using namespace flecsi;
 using namespace tree_topology_dev;
+
+struct Aggregate{
+  Aggregate(){
+    center = {0, 0};
+    mass = 0;
+  }
+
+  double mass;
+  point<double, 2> center;
+};
 
 class tree_policy{
 public:
@@ -30,9 +41,18 @@ public:
       return position_;
     }
 
+    double mass() const{
+      return mass_;
+    }
+
     void interact(const body* b){
       double d = distance(position_, b->position_);
-      velocity_ += 1e-9 * mass_ * (b->position_ - position_)/(d*d);
+      velocity_ += 1e-9 * b->mass_ * (b->position_ - position_)/(d*d);
+    }
+
+    void interact(Aggregate& a){
+      double d = distance(position_, a.center);
+      velocity_ += 1e-9 * a.mass * (a.center - position_)/(d*d);
     }
 
     void update(){
@@ -74,7 +94,7 @@ public:
     }
 
     void remove(body* ent){
-      auto itr = std::find(ents_.begin(), ents_.end(), ent);
+      auto itr = find(ents_.begin(), ents_.end(), ent);
       assert(itr != ents_.end());
       ents_.erase(itr);
       
@@ -101,12 +121,13 @@ public:
 
     point_t coordinates() const{
       point_t p;
-      id().coordinates(p);
+      branch_id_t bid = id();
+      bid.coordinates(p);
       return p;
     }
 
   private:
-    std::vector<body*> ents_;
+    vector<body*> ents_;
   };
 
   bool should_coarsen(branch* parent){
@@ -130,13 +151,16 @@ using point_t = tree_topology_t::point_t;
 using branch_t = tree_topology_t::branch_t;
 using branch_id_t = tree_topology_t::branch_id_t;
 
-static const size_t N = 10000;
-static const size_t TS = 50;
+static const size_t N = 5000;
+static const size_t TS = 5;
 
 TEST(tree_topology, gravity) {
   tree_topology_t t;
 
-  std::vector<body*> bodies;
+  thread_pool pool;
+  pool.start(8);
+
+  vector<body*> bodies;
   for(size_t i = 0; i < N; ++i){
     double m = uniform(0.1, 0.5);
     point_t p = {uniform(0.0, 1.0), uniform(0.0, 1.0)};
@@ -146,24 +170,62 @@ TEST(tree_topology, gravity) {
     t.insert(bi);
   }
 
+  size_t ix = 0;
+
   auto f = [&](body* b, body* b0){
     if(b0 == b){
       return;
     }
     
     b0->interact(b);
+    ++ix;
+  };
+
+  std::mutex mtx;
+
+  auto g = 
+  [&](branch_t* b, size_t depth, vector<Aggregate>& aggs) -> bool{
+    if(depth > 4 || b->is_leaf()){    
+      auto h = [&](body* bi, Aggregate& agg){
+       agg.center += bi->mass() * bi->coordinates();
+       agg.mass += bi->mass(); 
+      };
+
+      Aggregate agg;
+      t.visit_children(pool, b, h, agg);
+      mtx.lock();
+      aggs.emplace_back(move(agg));
+      mtx.unlock();
+
+      return true;
+    }
+
+    return false;
   };
 
   for(size_t ts = 0; ts < TS; ++ts){
     //cout << "---- ts = " << ts << endl;
 
+    vector<Aggregate> aggs;
+    t.visit(pool, t.root(), g, aggs);
+
     for(size_t i = 0; i < N; ++i){
       auto bi = bodies[i];
-      t.apply_in_radius(bi->coordinates(), 0.01, f, bi);
+      auto ents = t.find_in_radius(pool, bi->coordinates(), 0.01);
+      for(auto e : ents){
+        if(bi != e){
+          bi->interact(e);
+        }
+      }
     }
 
     for(size_t i = 0; i < N; ++i){
       auto bi = bodies[i];
+      
+      for(auto& agg : aggs){
+        bi->interact(agg);  
+      }
+
       bi->update();
       t.update(bi);
     }

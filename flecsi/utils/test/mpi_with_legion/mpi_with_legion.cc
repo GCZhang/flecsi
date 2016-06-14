@@ -20,16 +20,20 @@
 
 // user includes
 #include "flecsi/utils/mpi_legion_interoperability/legion_handshake.h"
+#include "flecsi/utils/mpi_legion_interoperability/mapper.h"
+#include "flecsi/utils/mpi_legion_interoperability/task_ids.h"
 #include "flecsi/execution/mpi_execution_policy.h"
 #include "flecsi/execution/task.h"
+
+using namespace flecsi::mpilegion;
 
 using execution_t = flecsi::execution_t<flecsi::mpi_execution_policy_t>;
 using return_type_t = execution_t::return_type_t;
 
 enum TaskIDs{
- TOP_LEVEL_TASK_ID,
- CONNECT_MPI_TASK_ID,
- HELLOWORLD_TASK_ID,
+ TOP_LEVEL_TASK_ID         =0x00000100,
+ HELLOWORLD_TASK_ID        =0x00000300,
+ HANDOFF_TO_MPI_TASK_ID    =0x00000400,
 };
 
 ExtLegionHandshake *handshake;
@@ -52,32 +56,66 @@ void top_level_task(const Task *task,
                     const std::vector<PhysicalRegion> &regions,
                     Context ctx, HighLevelRuntime *runtime)
 {
-  int num_procs=1;
+  int num_local_procs=0;
 #ifdef DEBUG
   printf ("inside top_level_task function \n");
 #endif
 
-//TOFIX: change to the correct allocation
-//what "all_procs" index space represents?
-  Rect<2> all_procs(Point<2>::ZEROES(),make_point(num_procs, num_procs));
+
+#ifndef SHARED_LOWLEVEL
+  // Only the shared lowlevel runtime needs to iterate over all points
+  // on each processor.
+  int num_points = 1;
+  int num_procs = 0;
+  {
+   std::set<Processor> all_procs;
+   Realm::Machine::get_machine().get_all_processors(all_procs);
+   for(std::set<Processor>::const_iterator it = all_procs.begin();
+      it != all_procs.end();
+      it++){
+    if((*it).kind() == Processor::LOC_PROC)
+      num_procs++;
+   }
+  }
+  num_local_procs=num_procs;  
+#else
+  int num_procs = Machine::get_machine()->get_all_processors().size();
+  int num_points = rank->proc_grid_size.x[0] * rank->proc_grid_size.x[1] * rank->proc_grid_size.x[2];
+#endif
+  printf("Attempting to connect %d processors with %d points per processor\n",
+         num_procs, num_points);
+  Point<2> all_procs_lo, all_procs_hi;
+  all_procs_lo.x[0] = all_procs_lo.x[1] = 0;
+  all_procs_hi.x[0] = num_procs - 1;
+  all_procs_hi.x[1] = num_points - 1;
+  Rect<2> all_processes = Rect<2>(all_procs_lo, all_procs_hi); 
+
+  Rect<1> local_procs(0,num_local_procs);
   ArgumentMap arg_map;
 
   IndexLauncher connect_mpi_launcher(CONNECT_MPI_TASK_ID,
-                                       Domain::from_rect<2>(all_procs),
+                                       Domain::from_rect<2>(all_processes),
                                        TaskArgument(0, 0),
                                        arg_map);
   IndexLauncher helloworld_launcher(HELLOWORLD_TASK_ID,
-                               Domain::from_rect<2>(all_procs),
+                               Domain::from_rect<1>(local_procs),
                                TaskArgument(0, 0),
                                arg_map);
+
+  TaskLauncher handoff_to_mpi_launcher(HANDOFF_TO_MPI_TASK_ID,
+      TaskArgument(0, 0));
+
   //run legion_init() from each thead
-  runtime->execute_index_space(ctx, connect_mpi_launcher);
-  runtime->execute_index_space(ctx, helloworld_launcher);
-
-  printf("connect_mpi finished \n");
-
-    //run some legion task here
-
+  FutureMap fm1 = runtime->execute_index_space(ctx, connect_mpi_launcher);
+   printf("connect_mpi finished \n");
+  //run some legion task here
+  fm1.wait_all_results();
+  FutureMap fm2 = runtime->execute_index_space(ctx, helloworld_launcher);
+  fm2.wait_all_results();
+  //hangoff to MPI
+  std::vector<Future> future_tmp;
+  future_tmp.push_back(runtime->execute_task(ctx, handoff_to_mpi_launcher));
+  //handshake->legion_handoff_to_ext();
 }
 
 void connect_mpi_task (const Task *task,
@@ -91,11 +129,19 @@ void connect_mpi_task (const Task *task,
 }
 
 
-void helloworld_mpi_task (const Task *task,
+void helloworld_mpi_task (const Task *legiontask,
                       const std::vector<PhysicalRegion> &regions,
                       Context ctx, HighLevelRuntime *runtime)
 {
   printf ("helloworld \n");
+}
+
+int handoff_to_mpi_task (const Task *legiontask,
+                      const std::vector<PhysicalRegion> &regions,
+                      Context ctx, HighLevelRuntime *runtime)
+{
+ handshake->legion_handoff_to_ext(); 
+ return 0;
 }
 
 void complete_legion_configure(void)
@@ -112,8 +158,8 @@ void run_legion_task(void)
   printf ("inside run_legion_task function \n");
 #endif
    handshake->ext_handoff_to_legion();
- //  handshake->ext_wait_on_legion();  // Legion running!!! Yeah !! 
 }
+
 
 void my_init_legion(){
 
@@ -132,8 +178,14 @@ void my_init_legion(){
                           Processor::LOC_PROC, false/*single*/, true/*index*/,
                           AUTO_GENERATE_ID, TaskConfigOptions(true/*leaf*/), "hellowrld_task");
 
+  HighLevelRuntime::register_legion_task<int,handoff_to_mpi_task>( HANDOFF_TO_MPI_TASK_ID,
+                          Processor::LOC_PROC, true/*single*/, false/*index*/, 0,
+                           TaskConfigOptions(), "handoff_to_mpi_task");
+
 
   const InputArgs &args = HighLevelRuntime::get_input_args();
+
+  HighLevelRuntime::set_registration_callback(mapper_registration);
 
   HighLevelRuntime::start(args.argc, args.argv, true);
 
@@ -141,7 +193,8 @@ void my_init_legion(){
 
   run_legion_task();  
 
-  handshake->legion_handoff_to_ext();
+  handshake->ext_wait_on_legion(); 
+
 }
 
 #define execute(task, ...) \
@@ -150,7 +203,6 @@ void my_init_legion(){
 TEST(mpi_with_legion, simple) {
    ASSERT_LT(execute(world_size), 1);
 
-//   handshake = new ExtLegionHandshake(ExtLegionHandshake::IN_EXT, 1, 1);
    my_init_legion(); 
  
 } // TEST
