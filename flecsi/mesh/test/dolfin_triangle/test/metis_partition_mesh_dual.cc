@@ -26,6 +26,7 @@ protected:
   dolfin_triangle_mesh_t<dolfin_triangle_types_t> dolfin;
 
   virtual void SetUp() override {
+    // get cell to cell connectivity
     connectivity_t conn = dolfin.get_connectivity(0, 2, 0);
 
     idx_t num_cells = dolfin.num_cells();
@@ -33,7 +34,7 @@ protected:
     idx_t num_vertices = dolfin.num_vertices();
     npart.resize(static_cast<size_t>(num_vertices));
 
-    // Because the type of indices (id_t a.k.a size_t) in connectivity_t is
+    // Because the data type of indices (id_t a.k.a size_t) in connectivity_t is
     // not the same as idx_t (a.k.a. int32 or int64) Metis expects, we have
     // to manually copy the elements to convert types.
     auto from_index = conn.get_from_index_vec();
