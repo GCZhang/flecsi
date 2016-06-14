@@ -26,9 +26,11 @@ protected:
   dolfin_triangle_mesh_t<dolfin_triangle_types_t> dolfin;
 
   virtual void SetUp() override {
-    // get cell to cell connectivity
+    // get cell to vertices connectivity
     auto conn = dolfin.get_connectivity(0, 2, 0);
 
+    // we use vector.resize() there because we want to also change vector.end()
+    // when we reserve memory. vector.reserve() DOES NOT change vector.end().
     idx_t num_cells = dolfin.num_cells();
     epart.resize(num_cells);
     idx_t num_vertices = dolfin.num_vertices();

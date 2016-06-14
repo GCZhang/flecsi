@@ -26,9 +26,11 @@ protected:
   dolfin_triangle_mesh_t<dolfin_triangle_types_t> dolfin;
 
   virtual void SetUp() override {
-    // get cell to cell connectivity
+    // get cell to vertices connectivity
     connectivity_t conn = dolfin.get_connectivity(0, 2, 0);
 
+    // we use vector.resize() there because we want to also change vector.end()
+    // when we reserve memory. vector.reserve() DOES NOT change vector.end().
     idx_t num_cells = dolfin.num_cells();
     epart.resize(static_cast<size_t>(num_cells));
     idx_t num_vertices = dolfin.num_vertices();
@@ -44,6 +46,11 @@ protected:
     auto to_index = conn.get_entities();
     std::vector<idx_t> eind(to_index.begin(), to_index.end());
 
+    // METIS_PartMeshDual will partition the mesh base on cell to cell
+    // connectivities. It recovers this information from the cell to vertices
+    // connectivies using number of common vertices two cells have.
+    // num_common = 2 means two cells are connected when they share a common
+    // edge.
     idx_t num_common = 2;
     idx_t num_parts = 2;
     idx_t objval;
