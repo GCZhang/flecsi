@@ -17,10 +17,29 @@
 #include <numeric>
 
 #include "../sagittarius_mesh.h"
-#include "sagittarius_fixture.h"
 
 using namespace flecsi;
 using namespace testing;
+
+class A_Sagittarius_Mesh_Partitioned_In_Two : public ::testing::Test {
+protected:
+  sagittarius_mesh_t <sagittarius_types> constellation;
+
+  virtual void SetUp() override {
+    // convert and divide vertex to vertex and cell to cell connectivities into
+    // two equal partitions in the form of Distributed CSR format as in ParMetis
+    // manual.
+    constellation.compute_graph_partition(0, 0, vertex_sizes, vertex_partitions);
+    constellation.compute_graph_partition(0, 2, cell_sizes, cell_partitions);
+  }
+
+  virtual void TearDown() override { }
+
+  std::vector<size_t> vertex_sizes = {4, 4};
+  std::vector<mesh_graph_partition<size_t>> vertex_partitions;
+  std::vector<size_t> cell_sizes = {2, 2};
+  std::vector<mesh_graph_partition<size_t>> cell_partitions;
+};
 
 TEST_F(A_Sagittarius_Mesh_Partitioned_In_Two,
        number_of_vertex_partitions_should_be_2) {

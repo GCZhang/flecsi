@@ -14,9 +14,13 @@
 
 #include <cinchtest.h>
 #include "../sagittarius_mesh.h"
-#include "sagittarius_fixture.h"
 
 using namespace flecsi;
+
+class A_Sagittarius_Mesh : public ::testing::Test {
+protected:
+  sagittarius_mesh_t <sagittarius_types> constellation;
+};
 
 TEST_F(A_Sagittarius_Mesh, number_of_vertices_should_be_8) {
   ASSERT_EQ(8, constellation.num_vertices());
