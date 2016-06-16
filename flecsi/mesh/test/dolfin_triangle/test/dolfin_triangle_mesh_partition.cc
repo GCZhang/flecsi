@@ -19,6 +19,27 @@
 using namespace flecsi;
 using namespace testing;
 
+class A_Dolfin_Triangle_Partitioned_In_One : public ::testing::Test {
+protected:
+  dolfin_triangle_mesh_t<dolfin_triangle_types_t> dolfin;
+
+  virtual void SetUp() {
+    dolfin.compute_graph_partition(0, 2, cell_sizes, cell_partitions);
+
+    for (auto x : cell_partitions[0].offset) {
+      std::cout << x << " ";
+    }
+    std::cout << std::endl;
+  }
+  std::vector<size_t> cell_sizes = {10};
+  std::vector<mesh_graph_partition<size_t>> cell_partitions;
+};
+
+TEST_F(A_Dolfin_Triangle_Partitioned_In_One,
+       number_of_cell_partitions_should_be_1) {
+  ASSERT_THAT(cell_partitions, SizeIs(1));
+}
+
 class A_Dolfin_Triangle_Partitioned_In_Two : public ::testing::Test {
 protected:
   dolfin_triangle_mesh_t<dolfin_triangle_types_t> dolfin;

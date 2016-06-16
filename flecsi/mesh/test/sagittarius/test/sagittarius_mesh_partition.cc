@@ -15,13 +15,36 @@
 #include <cinchtest.h>
 
 #include <numeric>
+#include <metis.h>
 
 #include "../sagittarius_mesh.h"
 
 using namespace flecsi;
 using namespace testing;
 
-class A_Sagittarius_Mesh_Partitioned_In_Two : public ::testing::Test {
+class A_Sagittarius_Mesh_Partitioned_In_One : public Test {
+protected:
+  sagittarius_mesh_t<sagittarius_types> constellation;
+
+  virtual void SetUp() {
+    constellation.compute_graph_partition(0, 2, cell_sizes, cell_partitions);
+  }
+
+  // WARNING: we deliberately use Metis' idx_t (which is either 32 or 64-bits
+  // signed integer) for cell_sizes and mesh_graph_partition. This may truncate
+  // the high order bits of FleCSI's id_t (which is essentially a 64-bit
+  // unsigned integer).
+  std::vector<idx_t> cell_sizes = {4};
+  std::vector<mesh_graph_partition<idx_t >> cell_partitions;
+};
+
+TEST_F(A_Sagittarius_Mesh_Partitioned_In_One,
+       number_of_cell_partitions_should_be_1) {
+  ASSERT_THAT(cell_partitions, SizeIs(1));
+}
+
+#if 0
+class A_Sagittarius_Mesh_Partitioned_In_Two : public Test {
 protected:
   sagittarius_mesh_t <sagittarius_types> constellation;
 
@@ -31,6 +54,15 @@ protected:
     // manual.
     constellation.compute_graph_partition(0, 0, vertex_sizes, vertex_partitions);
     constellation.compute_graph_partition(0, 2, cell_sizes, cell_partitions);
+
+        for (auto x : cell_partitions[0].offset) {
+      std::cout << x << " ";
+    }
+    std::cout << std::endl;
+    for (auto x : cell_partitions[0].index) {
+      std::cout << x << " ";
+    }
+    std::cout << std::endl;
   }
 
   virtual void TearDown() override { }
@@ -85,3 +117,4 @@ TEST_F(A_Sagittarius_Mesh_Partitioned_In_Two,
   ASSERT_THAT(cell_partitions[0].partition, ElementsAre(0, 2, 4));
   ASSERT_THAT(cell_partitions[1].partition, ElementsAre(0, 2, 4));
 }
+#endif

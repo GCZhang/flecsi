@@ -70,12 +70,12 @@ protected:
 
     // create the individual vertices
     vector<vertex_t*> vs;
-    
+
     for(size_t j = 0; j < height + 1; ++j){
       for(size_t i = 0; i < width + 1; ++i){
-	auto v =
-	  mesh_.create_vertex({double(i)+ 0.1*pow(double(j),1.8), 1.5*double(j)});
-	vs.push_back(v);
+        auto v =
+          mesh_.create_vertex({double(i)+ 0.1*pow(double(j),1.8), 1.5*double(j)});
+        vs.push_back(v);
       }
 
     }
@@ -85,11 +85,11 @@ protected:
 
     for(size_t j = 0; j < height; ++j){
       for(size_t i = 0; i < width; ++i){
-	auto c = 
-	  mesh_.create_cell({vs[i + j * width1],
-		vs[i + 1 + j * width1],
-		vs[i + 1 + (j + 1) * width1],
-		vs[i + (j + 1) * width1]});
+        auto c =
+          mesh_.create_cell({vs[i + j * width1],
+                             vs[i + 1 + j * width1],
+                             vs[i + 1 + (j + 1) * width1],
+                             vs[i + (j + 1) * width1]});
       }
     }
 
