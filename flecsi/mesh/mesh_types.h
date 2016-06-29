@@ -104,28 +104,33 @@ class mesh_entity_base_t
   template <size_t M>
   id_t global_id() const
   {
+    static_assert(M < N, "M < N");
     return ids_[M];
   } // id
 
   id_t global_id(size_t domain) const
   {
+    assert(domain < N && "invalid domain");
     return ids_[domain];
   } // id
 
   template <size_t M>
   size_t id() const
   {
+    static_assert(M < N, "M < N");
     return ids_[M].entity();
   } // id
 
   size_t id(size_t domain) const
   {
+    assert(domain < N && "invalid domain");
     return ids_[domain].entity();
   } // id
 
   template <size_t M>
   uint16_t info() const
   {
+    static_assert(M < N, "M < N");
     return ids_[M] >> 48;
   } // info
 
@@ -135,6 +140,7 @@ class mesh_entity_base_t
   template <size_t M>
   void set_global_id( const id_t & id )
   {
+    static_assert(M < N, "M < N");
     ids_[M] = id;
   } // id
 
@@ -154,6 +160,7 @@ class mesh_entity_base_t
   template <size_t M>
   void set_info(uint16_t info)
   {
+    static_assert(M < N, "M < N");
     ids_[M] = (uint64_t(info) << 48) | ids_[M];
   } // set_info
 
