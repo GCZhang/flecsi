@@ -45,12 +45,12 @@ struct dolfin_triangle_types_t {
 
   using bindings = std::tuple<>;
 
-  template<size_t M, size_t D>
-  static mesh_entity_base_t<num_domains>*
-  create_entity(mesh_topology_base_t* mesh, size_t num_vertices){
-    switch(M){
-      case 0:{
-        switch(D){
+  template<size_t Domain, size_t Dimension>
+  static mesh_entity_base_t<num_domains> *
+  create_entity(mesh_topology_base_t *mesh, size_t num_vertices) {
+    switch (Domain) {
+      case 0: {
+        switch (Dimension) {
           case 1:
             return mesh->make<dolfin_edge_t>(*mesh);
           default:
