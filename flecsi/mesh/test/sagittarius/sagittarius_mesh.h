@@ -41,11 +41,11 @@ private:
     std::vector<sagittarius_vertex_t *> vertices;
     for (size_t i = 0; i < 8; i++) {
       auto v = super::template make<sagittarius_vertex_t>();
-      super::template add_entity<0, sagittarius_vertex_t::dimension>(v);
+      super::template add_entity<0, 0>(v);
       vertices.push_back(v);
     }
 
-    // add cells and cell to vertex connectivities to the mesh
+    // add cells and cell to vertex connectivities to the mesh for triangles
     for (size_t i = 0; i < 2; i++) {
       auto cell = super::template make<sagittarius_quad_t>();
       super::template add_entity<2, 0>(cell);
@@ -56,7 +56,7 @@ private:
                                   vertices[quads[i][3]]});
     }
 
-    // actually compute connectivities between entities
+    // add cells and cell to vertex connectivities to the mesh for quads
     for (size_t i = 0; i < 2; i++) {
       auto cell = super::template make<sagittarius_triangle_t>();
       super::template add_entity<2, 0>(cell);
@@ -66,6 +66,7 @@ private:
                                   vertices[triangles[i][2]]});
     }
 
+    // actually compute connectivities between entities
     super::template init();
   }
 

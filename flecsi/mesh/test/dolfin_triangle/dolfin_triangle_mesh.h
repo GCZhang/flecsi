@@ -46,7 +46,7 @@ public:
     std::vector<dolfin_vertex_t *> vertices;
     for (size_t i = 0; i < 10; i++) {
       auto v = super::template make<dolfin_vertex_t>();
-      super::template add_entity<0, dolfin_vertex_t::dimension>(v);
+      super::template add_entity<0, 0>(v);
       vertices.push_back(v);
     }
 
