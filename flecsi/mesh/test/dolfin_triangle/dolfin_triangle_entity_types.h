@@ -37,7 +37,8 @@ public:
   dolfin_cell_t(mesh_topology_base_t&){}
   
   std::vector<size_t>
-  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c, flecsi::id_t * e){
+  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c,
+                  flecsi::id_t * e){
     flecsi::id_t* v = c.get_entities(cell_id, 0);
     e[0] = v[0];
     e[1] = v[1];
