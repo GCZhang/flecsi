@@ -40,17 +40,18 @@ TEST_F(A_Dolfin_Triangle_Partitioned_In_One,
 
 TEST_F(A_Dolfin_Triangle_Partitioned_In_One,
        dump_cell_2_cell_serial_CSR) {
-  std::cout << "xadj\t";
+  CINCH_CAPTURE() << "Serial CSR\n";
+  CINCH_CAPTURE() << "xadj\t";
   for (auto x : cell_partitions[0].offset) {
-    std::cout << x << " ";
+    CINCH_CAPTURE() << x << " ";
   }
-  std::cout << std::endl;
+  CINCH_CAPTURE() << std::endl;
 
-  std::cout << "adjncy\t";
+  CINCH_CAPTURE() << "adjncy\t";
   for (auto x : cell_partitions[0].index) {
-    std::cout << x << " ";
+    CINCH_CAPTURE() << x << " ";
   }
-  std::cout << std::endl;
+  CINCH_CAPTURE() << std::endl;
 }
 
 class A_Dolfin_Triangle_Partitioned_In_Two : public ::testing::Test {
@@ -94,23 +95,24 @@ TEST_F(A_Dolfin_Triangle_Partitioned_In_Two,
 }
 
 TEST_F(A_Dolfin_Triangle_Partitioned_In_Two, dump_cell_2_cell_DCSR) {
+  CINCH_CAPTURE() << "Distributed CSR\n";
   for (auto cell_partition : cell_partitions) {
-    std::cout << "xadj\t";
+    CINCH_CAPTURE() << "xadj\t";
     for (auto x : cell_partition.offset) {
-      std::cout << x << " ";
+      CINCH_CAPTURE() << x << " ";
     }
-    std::cout << std::endl;
+    CINCH_CAPTURE() << std::endl;
 
-    std::cout << "adjncy\t";
+    CINCH_CAPTURE() << "adjncy\t";
     for (auto x : cell_partition.index) {
-      std::cout << x << " ";
+      CINCH_CAPTURE() << x << " ";
     }
-    std::cout << std::endl;
+    CINCH_CAPTURE() << std::endl;
 
-    std::cout << "vtxdist\t";
+    CINCH_CAPTURE() << "vtxdist\t";
     for (auto x : cell_partition.partition) {
-      std::cout << x << " ";
+      CINCH_CAPTURE() << x << " ";
     }
-    std::cout << std::endl;
+    CINCH_CAPTURE() << std::endl;
   }
 }
