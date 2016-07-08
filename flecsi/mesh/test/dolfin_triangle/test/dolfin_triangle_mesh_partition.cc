@@ -14,8 +14,6 @@
 
 #include <cinchtest.h>
 
-#include <metis.h>
-
 #include "../dolfin_triangle_mesh.h"
 
 using namespace flecsi;
@@ -29,8 +27,12 @@ protected:
     dolfin.compute_graph_partition(0, 2, cell_sizes, cell_partitions);
   }
 
-  std::vector<idx_t> cell_sizes = {10};
-  std::vector<mesh_graph_partition<idx_t>> cell_partitions;
+  // WARNING: we deliberately use int (which is either 32 or 64-bits
+  // signed integer) for cell_sizes and mesh_graph_partition. This may truncate
+  // the high order bits of FleCSI's id_t (which is essentially a 64-bit
+  // unsigned integer).
+  std::vector<int> cell_sizes = {10};
+  std::vector<mesh_graph_partition<int>> cell_partitions;
 };
 
 TEST_F(A_Dolfin_Triangle_Partitioned_In_One,
@@ -66,10 +68,14 @@ protected:
     dolfin.compute_graph_partition(0, 2, cell_sizes, cell_partitions);
   }
 
-  std::vector<size_t> vertex_sizes = {5, 5};
-  std::vector<mesh_graph_partition<size_t>> vertex_partitions;
-  std::vector<idx_t> cell_sizes = {5, 5};
-  std::vector<mesh_graph_partition<idx_t>> cell_partitions;
+  // WARNING: we deliberately use int (which is either 32 or 64-bits
+  // signed integer) for cell_sizes and mesh_graph_partition. This may truncate
+  // the high order bits of FleCSI's id_t (which is essentially a 64-bit
+  // unsigned integer).
+  std::vector<int> vertex_sizes = {5, 5};
+  std::vector<mesh_graph_partition<int>> vertex_partitions;
+  std::vector<int> cell_sizes = {5, 5};
+  std::vector<mesh_graph_partition<int>> cell_partitions;
 };
 
 TEST_F(A_Dolfin_Triangle_Partitioned_In_Two,

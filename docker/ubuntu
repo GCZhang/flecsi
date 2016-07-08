@@ -18,7 +18,7 @@ ARG COVERAGE
 
 RUN apt-get -q update -y
 RUN apt-get -qq install -y make cmake cmake-data git g++ gfortran libopenmpi-dev \
- openmpi-bin libmetis-dev libscotch-dev libexodusii-dev liblapacke-dev flex python-pip
+ openmpi-bin libscotch-dev libexodusii-dev liblapacke-dev flex python-pip
 
 RUN groupadd -r flecsi && useradd -r -m -g flecsi flecsi
 USER flecsi

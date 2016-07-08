@@ -50,7 +50,7 @@ cinch_add_unit(dolfin_triangle_connectivity
         )
 
 if (ENABLE_PARTITION AND METIS_FOUND)
-    cinch_add_unit(dolfin_triangle_metis
+    cinch_add_unit(dolfin_triangle_metis_dual
             SOURCES test/dolfin_triangle/test/metis_partition_mesh_dual.cc
             LIBRARIES ${PARTITION_LIBRARIES})
     cinch_add_unit(metis_partition_mesh_nodal
