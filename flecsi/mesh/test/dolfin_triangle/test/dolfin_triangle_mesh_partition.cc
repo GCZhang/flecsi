@@ -121,4 +121,5 @@ TEST_F(A_Dolfin_Triangle_Partitioned_In_Two, dump_cell_2_cell_DCSR) {
     }
     CINCH_CAPTURE() << std::endl;
   }
+  ASSERT_TRUE(CINCH_EQUAL_BLESSED("dolfin_triangle_mesh_partition.blessed"));
 }

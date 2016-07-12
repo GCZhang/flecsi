@@ -1682,8 +1682,8 @@ class mesh_topology_t : public mesh_topology_base_t
     }
 
     size_t n = num_entities_(dim, domain);
+    // TODO: replace with partition_sizes.size()?
     size_t pn = n / total_size;
-
     size_t to_dim;
 
     if (dim == 0) {
@@ -1704,6 +1704,7 @@ class mesh_topology_t : public mesh_topology_base_t
 
     mesh_graph_partition<int_t> cp;
     cp.offset.reserve(pn);
+    cp.offset.push_back(0);
 
     size_t offset = 0;
     size_t pi = 0;
@@ -1713,8 +1714,7 @@ class mesh_topology_t : public mesh_topology_base_t
 
     for(size_t from_id = 0; from_id < n; ++from_id){
       auto to_ids = id_range(c1.get_entities(), fv1[from_id], fv1[from_id + 1]);
-      cp.offset.push_back(offset);
-      
+
       for(auto to_id : to_ids){
         auto ret_ids = id_range(c2.get_entities(), fv2[to_id.entity()], fv2[to_id.entity() + 1]);
         
@@ -1725,10 +1725,10 @@ class mesh_topology_t : public mesh_topology_base_t
           }
         }
       }
-
+      cp.offset.push_back(offset);
       size_t m = cp.offset.size();
 
-      if(m >= pn * partition_sizes[pi]){
+      if(m >= pn * (partition_sizes[pi]+1)){
         partitions.emplace_back(std::move(cp));
         partition.push_back(m + partition.back());
         offset = 0;

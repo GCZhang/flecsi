@@ -1,10 +1,10 @@
 Serial CSR
-xadj	0 2 4 6 9 11 13 15 17 20
+xadj	0 2 4 6 9 11 13 15 17 20 22
 adjncy	1 9 2 0 3 1 4 8 2 5 3 6 4 7 5 8 6 9 3 7 0 8
 Distributed CSR
-xadj	0 2 4 6 9
+xadj	0 2 4 6 9 11
 adjncy	1 9 2 0 3 1 4 8 2 5 3
 vtxdist	0 5 10
-xadj	0 2 4 6 9
+xadj	0 2 4 6 9 11
 adjncy	6 4 7 5 8 6 9 3 7 0 8
 vtxdist	0 5 10
