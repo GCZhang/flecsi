@@ -58,7 +58,17 @@ if (ENABLE_PARTITION AND METIS_FOUND)
             LIBRARIES ${PARTITION_LIBRARIES})
     cinch_add_unit(metis_partition_graph_kway
             SOURCES test/dolfin_triangle/test/metis_partition_graph_kway.cc
-            LIBRARIES ${PARTITION_LIBRARIES})
+            LIBRARIES ${PARTITION_LIBRARIES}
+            INPUTS  test/dolfin_triangle/test/metis_partition_graph_kway.blessed
+            )
+endif()
+
+if (ENABLE_PARTITION AND PARMETIS_FOUND)
+    cinch_add_unit(mpi_parmetis
+            SOURCES test/dolfin_triangle/test/mpi_parmetis.cc
+            LIBRARIES ${PARTITION_LIBRARIES}
+            POLICY MPI
+            THREADS 2)
 endif()
 
 cinch_add_unit(sagittarius

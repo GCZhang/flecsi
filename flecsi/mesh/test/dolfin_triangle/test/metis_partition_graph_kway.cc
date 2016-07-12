@@ -27,34 +27,66 @@ protected:
 
   virtual void  SetUp() override {
     // get cell to cell connectivity, this is the "Graph" in Metis' lingo.
-    // TODO: this gives c2c via shared vertices, we want c2c via shared edges.
-    //connectivity_t conn = dolfin.get_connectivity(0, 2, 2);
-
     idx_t num_cells = dolfin.num_cells();
-
-    std::vector<size_t> cell_sizes;
     cell_sizes.push_back(num_cells);
-    std::vector<mesh_graph_partition<size_t>> cell_partitions;
     dolfin.compute_graph_partition(0, 2, cell_sizes, cell_partitions);
-    std::cout << "num partitions: " << cell_partitions.size() << std::endl;
 
-    auto &from_index = cell_partitions[0].offset;
-    std::vector<idx_t> xadj(from_index.begin(), from_index.end());
-    for (auto x : from_index) {
-      std::cout << x << " ";
-    }
-    std::cout << std::endl;
+    idx_t ncon = 1;
+    idx_t nparts = 2;
+    idx_t objval;
 
-    auto &to_index = cell_partitions[0].index;
-    std::vector<idx_t> adjncy(to_index.begin(), to_index.end());
-    for (auto x : adjncy) {
-      std::cout << x << " ";
-    }
-    std::cout << std::endl;
+    part.resize(num_cells);
+
+    auto ret = METIS_PartGraphKway(
+      &num_cells,
+      &ncon,
+      cell_partitions[0].offset.data(),
+      cell_partitions[0].index.data(),
+      nullptr, /* vwgt */
+      nullptr, /* vsize */
+      nullptr, /* adjwt */
+      &nparts,
+      nullptr, /* tpwgts */
+      nullptr, /* ubvec */
+      nullptr, /* options */
+      &objval,
+      part.data()
+    );
+
+    ASSERT_EQ(ret, METIS_OK);
   }
 
+  // WARNING: we deliberately use Metis' idx_t (which is either 32 or 64-bits
+  // signed integer) for cell_sizes and mesh_graph_partition. This may truncate
+  // the high order bits of FleCSI's id_t (which is essentially a 64-bit
+  // unsigned integer).
+  std::vector<idx_t> cell_sizes;
+  std::vector<mesh_graph_partition<idx_t>> cell_partitions;
+  std::vector<idx_t> part;
 };
 
 TEST_F(metis_partition_graph_2way, there_are_two_partitions) {
-
+   ASSERT_THAT(part, Each(AnyOf(Eq(0), Eq(1))));
 }
+
+TEST_F(metis_partition_graph_2way, dump) {
+   CINCH_CAPTURE() << "Serial CSR\n";
+   CINCH_CAPTURE() << "xadj\t";
+   for (auto x : cell_partitions[0].offset) {
+     CINCH_CAPTURE() << x << " ";
+   }
+   CINCH_CAPTURE() << std::endl;
+
+   CINCH_CAPTURE() << "adjncy\t";
+   for (auto x : cell_partitions[0].index) {
+     CINCH_CAPTURE() << x << " ";
+   }
+   CINCH_CAPTURE() << std::endl;
+
+   CINCH_CAPTURE() << "partition ";
+   for (auto i: part) {
+     CINCH_CAPTURE() << i << " ";
+   }
+   CINCH_CAPTURE() << std::endl;
+   ASSERT_TRUE(CINCH_EQUAL_BLESSED("metis_partition_graph_kway.blessed"));
+ }
