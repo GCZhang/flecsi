@@ -21,10 +21,12 @@ set(tree_SOURCES
 
 cinch_add_unit(tree
   SOURCES test/tree.cc
-  INPUTS test/tree.blessed)
+  INPUTS test/tree.blessed
+        LIBRARIES pthread)
 
 cinch_add_unit(gravity
-  SOURCES test/gravity.cc)
+  SOURCES test/gravity.cc
+        LIBRARIES pthread)
 
 cinch_add_unit(gravity-state
   SOURCES test/gravity-state.cc)

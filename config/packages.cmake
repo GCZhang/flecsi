@@ -100,7 +100,11 @@ if (ENABLE_HYPRE)
   endif ()
 endif (ENABLE_HYPRE)
 
-
+#------------------------------------------------------------------------------#
+# Thrust
+# FIXME: why do I have to put it here than the CMakeLists.txt in the subdir?
+set (THRUST_DIR "" CACHE PATH "Thrust directory")
+include_directories(${THRUST_DIR})
 
 #------------------------------------------------------------------------------#
 # Process id bits
