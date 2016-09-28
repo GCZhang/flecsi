@@ -62,6 +62,9 @@ class bitfield__
    * Set individual bit.
    *--------------------------------------------------------------------------*/
 
+//FIXME  instead of "undef" rename the function name
+#undef setbit
+
   field_type_t setbit(const size_t bit)
   {
     field_type_t tmp = 1 << bit;
