@@ -252,6 +252,16 @@ class mesh_topology_t : public mesh_topology_base_t
       return mesh_.get_entity<D, M>((*entities_)[index_]);
     } // operator *
 
+    difference_type operator-(const iterator & itr) 
+    {
+      return index_ - itr.index_;
+    }
+
+    iterator operator-(size_t n) 
+    {
+      return iterator(mesh_, *entities_, index_ - n);
+    }
+
     // allow the entity methods to be called into
     pointer operator->()
     {
@@ -267,6 +277,11 @@ class mesh_topology_t : public mesh_topology_base_t
     {
       return index_ != itr.index_;
     } // operator !=
+
+    bool operator<(const iterator & itr) const
+    {
+      return index_ < itr.index_;
+    } // operator <
 
    private:
     mesh_t & mesh_;
@@ -348,6 +363,11 @@ class mesh_topology_t : public mesh_topology_base_t
     {
       return index_ != itr.index_;
     } // operator !=
+
+    bool operator<(const const_iterator & itr) const
+    {
+      return index_ < itr.index_;
+    } // operator <
 
    private:
     mesh_t & mesh_;
@@ -997,8 +1017,8 @@ class mesh_topology_t : public mesh_topology_base_t
     const connectivity_t & c = get_connectivity(FM, TM, E::dimension, D);
     assert(!c.empty() && "empty connectivity");
     const index_vector_t & fv = c.get_from_index_vec();
-    return const_entity_set_t<D, TM>(*this, c.get_entities(),
-        fv[e->template id<FM>()], fv[e->template id<FM>() + 1]);
+    auto n = e->template id<FM>();
+    return const_entity_set_t<D, TM>(*this, c.get_entities(), fv[n], fv[n+1]);
   } // entities
 
   /*!
