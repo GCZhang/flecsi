@@ -16,7 +16,7 @@
 #define flecsi_burton_mesh_traits_h
 
 #include "flecsi/utils/bitfield.h"
-#include "flecsi/data/data.h"
+#include "flecsi/data/old_data.h"
 #include "flecsi/geometry/point.h"
 #include "flecsi/geometry/space_vector.h"
 
@@ -95,10 +95,10 @@ struct burton_mesh_traits_t {
 
 //! A type definition of data_t based on the storage policy for the mesh.
 #ifndef MESH_STORAGE_POLICY
-  using data_t = data_model::data_t<private_state_meta_data_t>;
+  using data_t = data::data_t<private_state_meta_data_t>;
 #else
   using data_t =
-    data_model::data_t<private_state_meta_data_t, MESH_STORAGE_POLICY>;
+    data::data_t<private_state_meta_data_t, MESH_STORAGE_POLICY>;
 #endif
 
 }; // struct burton_mesh_traits_t

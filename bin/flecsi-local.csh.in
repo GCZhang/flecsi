@@ -1,0 +1,5 @@
+################################################################################
+# FleCSI Csh/Tcsh configuration file.
+################################################################################
+
+setenv LD_LIBRARY_PATH $LD_LIBRARY_PATH:@FLECSI_LOCAL_LD_LIBRARY_PATH@

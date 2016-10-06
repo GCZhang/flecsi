@@ -1,79 +1,96 @@
 /*~--------------------------------------------------------------------------~*
- *  @@@@@@@@  @@           @@@@@@   @@@@@@@@ @@
- * /@@/////  /@@          @@////@@ @@////// /@@
- * /@@       /@@  @@@@@  @@    // /@@       /@@
- * /@@@@@@@  /@@ @@///@@/@@       /@@@@@@@@@/@@
- * /@@////   /@@/@@@@@@@/@@       ////////@@/@@
- * /@@       /@@/@@//// //@@    @@       /@@/@@
- * /@@       @@@//@@@@@@ //@@@@@@  @@@@@@@@ /@@
- * //       ///  //////   //////  ////////  //
- *
- * Copyright (c) 2016 Los Alamos National Laboratory, LLC
- * All rights reserved
+ * Copyright (c) 2015 Los Alamos National Security, LLC
+ * All rights reserved.
  *~--------------------------------------------------------------------------~*/
 
 #ifndef flecsi_task_h
 #define flecsi_task_h
 
-#include <type_traits>
+#include <iostream>
 
-#include "flecsi/execution/default_execution_policy.h"
+#include "flecsi/execution/common/processor.h"
+#include "flecsi/execution/common/launch.h"
+#include "flecsi/execution/common/task_hash.h"
 
-/*!
- * \file task.h
- * \authors bergen
- * \date Initial file creation: Oct 19, 2015
- */
+///
+// \file task.h
+// \authors bergen
+// \date Initial file creation: Jul 26, 2016
+///
 
-namespace flecsi
+namespace flecsi {
+namespace execution {
+
+///
+// \struct task__ task.h
+// \brief task__ provides...
+///
+template<typename execution_policy_t>
+struct task__
 {
-/*!
-  \class execution_t task.h
-  \brief execution_t provides...
-*/
-template <typename execution_policy_t = default_execution_policy_t>
-class execution_t : public execution_policy_t
-{
- public:
-  using return_type_t = typename execution_policy_t::return_type_t;
 
-  // FIXME We may need task registration
+  // FIXME: Finish Doxygen
 
-  template <typename T, typename... Args>
-  static return_type_t execute_driver(T && task, Args &&... args)
+  ///
+  //
+  ///
+  template<
+    typename R,
+    typename A
+  >
+  static
+  decltype(auto)
+  register_task(
+    uintptr_t address,
+    processor_t processor,
+    launch_t launch
+  )
   {
-    // Make sure that the task definition returns the correct type
-//    static_assert(std::is_same<return_type_t,
-//                      decltype(task(std::forward<Args>(args)...))>(),
-//        "Driver must return flecsi::execution_t::return_type_t");
+    return execution_policy_t::template register_task<R, A>(
+      task_hash_t::make_key(address, processor, launch));
+  } // register_task
 
-    // pass the driver to the execution policy for handling
-    return execution_policy_t::execute_driver(
-        std::forward<T>(task), std::forward<Args>(args)...);
-  } // execute_driver
-
-  template <typename T, typename... Args>
-  static return_type_t execute_task(T && task, Args &&... args)
+  ///
+  //
+  ///
+  template<
+    typename R,
+    typename ... As
+  >
+  static
+  decltype(auto)
+  execute_task(
+    uintptr_t address,
+    processor_t processor,
+    launch_t launch,
+    As ... args
+  )
   {
-    // Make sure that the task definition returns the correct type
-    static_assert(std::is_same<return_type_t,
-                      decltype(task(std::forward<Args>(args)...))>(),
-        "Tasks must return flecsi::execution_t::return_type_t");
+    return execution_policy_t::template execute_task<R>(
+      task_hash_t::make_key(address, processor,launch), args ...);
+  } // execute
 
-    // pass the task to the execution policy for handling
-    return execution_policy_t::execute_task(
-        std::forward<T>(task), std::forward<Args>(args)...);
-  } // execute_task
+}; // class task
 
-}; // class execution_t
-
+} // namespace execution 
 } // namespace flecsi
 
-#define task
+//
+// This include file defines the flecsi_execution_policy_t used below.
+//
+#include "flecsi_runtime_execution_policy.h"
+
+namespace flecsi {
+namespace execution {
+
+using task_t = task__<flecsi_execution_policy_t>;
+
+} // namespace execution 
+} // namespace flecsi
 
 #endif // flecsi_task_h
 
 /*~-------------------------------------------------------------------------~-*
- * Formatting options
+ * Formatting options for vim.
  * vim: set tabstop=2 shiftwidth=2 expandtab :
  *~-------------------------------------------------------------------------~-*/

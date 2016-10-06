@@ -29,18 +29,18 @@
 namespace flecsi
 {
 /*!
-  \class bitfield bitfield.h
-  \brief bitfield provides...
+  \class bitfield__ bitfield.h
+  \brief bitfield__ provides...
  */
 
 template <typename T>
-class bitfield
+class bitfield__
 {
  public:
   using field_type_t = T;
 
   //! Default constructor
-  bitfield(const field_type_t bits = 0x0) : bits_(bits)
+  bitfield__(const field_type_t bits = 0x0) : bits_(bits)
   {
     static_assert(std::numeric_limits<T>::is_integer &&
             !std::numeric_limits<T>::is_signed,
@@ -48,21 +48,34 @@ class bitfield
   }
 
   //! Copy constructor (disabled)
-  bitfield(const bitfield & bf) : bits_(bf.bits_) {}
+  bitfield__(const bitfield__ & bf) : bits_(bf.bits_) {}
+
   //! Assignment operator (disabled)
-  bitfield & operator=(const bitfield & bf) { bits_ = bf.bits_; }
+  bitfield__ & operator=(const bitfield__ & bf) { bits_ = bf.bits_; }
+
   //! Destructor
-  ~bitfield() {}
+  ~bitfield__() {}
+
   /*!-------------------------------------------------------------------------*
    * Set bits in mask.
    *--------------------------------------------------------------------------*/
 
-  field_type_t set(const field_type_t mask) { return bits_ |= mask; } // set
+  field_type_t
+  set(
+    const field_type_t mask
+  )
+  {
+    return bits_ |= mask;
+  } // set
+
   /*!-------------------------------------------------------------------------*
    * Set individual bit.
    *--------------------------------------------------------------------------*/
 
-  field_type_t setbit(const size_t bit)
+  field_type_t
+  setbit(
+    const size_t bit
+  )
   {
     field_type_t tmp = 1 << bit;
     return bits_ |= tmp;
@@ -72,17 +85,32 @@ class bitfield
    * Clear all bits.
    *--------------------------------------------------------------------------*/
 
-  field_type_t clear() { return bits_ = 0x0; } // set
+  field_type_t
+  clear()
+  {
+    return bits_ = 0x0;
+  } // set
+
   /*!-------------------------------------------------------------------------*
    * Clear bits in mask.
    *--------------------------------------------------------------------------*/
 
-  field_type_t clear(const field_type_t mask) { return bits_ &= ~mask; } // set
+  field_type_t
+  clear(
+    const field_type_t mask
+  )
+  {
+    return bits_ &= ~mask;
+  } // set
+
   /*!-------------------------------------------------------------------------*
    * Clear individual bit.
    *--------------------------------------------------------------------------*/
 
-  field_type_t clearbit(const size_t bit)
+  field_type_t
+  clearbit(
+    const size_t bit
+  )
   {
     field_type_t tmp = 1 << bit;
     return bits_ &= ~tmp;
@@ -101,7 +129,10 @@ class bitfield
    * Test bit.
    *--------------------------------------------------------------------------*/
 
-  bool bitset(const size_t bit) const
+  bool
+  bitset(
+    const size_t bit
+  ) const
   {
     field_type_t tmp = 1 << bit;
     return tmp & bits_;
@@ -111,7 +142,9 @@ class bitfield
    * Test all bits.
    *--------------------------------------------------------------------------*/
 
-  bool anybitset() const
+  bool
+  anybitset()
+  const
   {
     return (bits_ != 0x0);
   } // bitset
@@ -134,9 +167,9 @@ class bitfield
  private:
   field_type_t bits_;
 
-}; // class bitfield
+}; // class bitfield__
 
-using bitfield_t = bitfield<uint32_t>;
+using bitfield_t = bitfield__<uint32_t>;
 
 } // namespace flecsi
 
