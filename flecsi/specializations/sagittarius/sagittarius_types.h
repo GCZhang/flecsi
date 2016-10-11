@@ -46,14 +46,6 @@ struct sagittarius_types {
 
   using bindings = std::tuple<>;
 
-<<<<<<< HEAD:flecsi/mesh/test/sagittarius/sagittarius_types.h
-  template<size_t Domain, size_t Dimension>
-  static mesh_entity_base_t<num_domains> *
-  create_entity(mesh_topology_base_t *mesh, size_t num_vertices) {
-    switch (Domain) {
-      case 0: {
-        switch (Dimension) {
-=======
   template<
     size_t M,
     size_t D
@@ -67,7 +59,6 @@ struct sagittarius_types {
     switch(M){
       case 0:{
         switch(D){
->>>>>>> remotes/origin/execution:flecsi/specializations/sagittarius/sagittarius_types.h
           case 1:
             return mesh->make<sagittarius_edge_t>(*mesh);
           default:

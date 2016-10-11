@@ -610,6 +610,7 @@ public:
 
     mesh_graph_partition<int_t> cp;
     cp.offset.reserve(pn);
+    cp.offset.push_back(0);
 
     size_t offset = 0;
     size_t pi = 0;
@@ -619,7 +620,6 @@ public:
 
     for(size_t from_id = 0; from_id < n; ++from_id){
       auto to_ids = c1.get_index_space().ids(fv1[from_id], fv1[from_id + 1]);
-      cp.offset.push_back(offset);
       
       for(auto to_id : to_ids){
         auto ret_ids = 
@@ -627,17 +627,20 @@ public:
         
         for(auto ret_id : ret_ids){
           if(ret_id.entity() != from_id){
-            cp.index.push_back(ret_id.local_id());
+            cp.index.push_back(ret_id.entity());
             ++offset;
           }
         }
       }
 
+      cp.offset.push_back(offset);
       size_t m = cp.offset.size();
 
-      if(m >= pn * partition_sizes[pi]){
+      if(m >= pn * partition_sizes[pi]+1){
         partitions.emplace_back(std::move(cp));
-        partition.push_back(m + partition.back());
+        // FIXME: can we reuse cp after it is std::moved?
+        cp.offset.push_back(0);
+        partition.push_back(m - 1 + partition.back());
         offset = 0;
         ++pi;
       }
@@ -1322,28 +1325,6 @@ private:
 
   }
 
-<<<<<<< HEAD:flecsi/mesh/mesh_topology.h
-  template<typename I>
-  void compute_graph_partition(
-    size_t domain,
-    size_t dim,
-    const std::vector<I>& partition_sizes,
-    std::vector<mesh_graph_partition<I>>& partitions){
-
-    using int_t = I;
-
-    partitions.reserve(partition_sizes.size());
-
-    int_t total_size = 0;
-    for(auto pi : partition_sizes){
-      total_size += pi;
-    }
-
-    size_t n = num_entities_(dim, domain);
-    // TODO: replace with partition_sizes.size()?
-    size_t pn = n / total_size;
-    size_t to_dim;
-=======
   /*!
     Build bindings associated with a from/to domain and topological dimension.
     compute_bindings will call this on each binding found in the tuple of
@@ -1352,7 +1333,6 @@ private:
   template <size_t FM, size_t TM, size_t TD>
   void build_bindings()
   {
->>>>>>> remotes/origin/execution:flecsi/topology/mesh_topology.h
 
     // std::cerr << "build bindings: dom " << FM << " -> " << TM 
     //           << " dim " << TD << std::endl;
@@ -1364,45 +1344,14 @@ private:
     size_t entity_id = 0;
     const size_t _num_cells = num_entities<MT::num_dimensions, FM>();
 
-<<<<<<< HEAD:flecsi/mesh/mesh_topology.h
-    mesh_graph_partition<int_t> cp;
-    cp.offset.reserve(pn);
-    cp.offset.push_back(0);
-=======
     // Storage for cell connectivity information
     connection_vector_t cell_conn(_num_cells);
->>>>>>> remotes/origin/execution:flecsi/topology/mesh_topology.h
 
     // Get cell definitions from domain 0
     auto & cells = ms_.index_spaces[FM][MT::num_dimensions];
 
     static constexpr size_t M0 = 0;
 
-<<<<<<< HEAD:flecsi/mesh/mesh_topology.h
-    for(size_t from_id = 0; from_id < n; ++from_id){
-      auto to_ids = id_range(c1.get_entities(), fv1[from_id], fv1[from_id + 1]);
-
-      for(auto to_id : to_ids){
-        auto ret_ids = id_range(c2.get_entities(), fv2[to_id.entity()], fv2[to_id.entity() + 1]);
-        
-        for(auto ret_id : ret_ids){
-          if(ret_id.entity() != from_id){
-            cp.index.push_back(ret_id.global_id());
-            ++offset;
-          }
-        }
-      }
-      cp.offset.push_back(offset);
-      size_t m = cp.offset.size();
-
-      if(m >= pn * (partition_sizes[pi]+1)){
-        partitions.emplace_back(std::move(cp));
-        partition.push_back(m + partition.back());
-        offset = 0;
-        ++pi;
-      }
-    }
-=======
     for (size_t i = 0; i < MT::num_dimensions; ++i) {
       get_connectivity_<TM, FM, TD>(i).init();
     }
@@ -1415,7 +1364,6 @@ private:
     std::array<id_t, 4096> entity_ids;
 
     using to_entity_type = entity_type<TD, TM>;
->>>>>>> remotes/origin/execution:flecsi/topology/mesh_topology.h
 
     // Iterate over cells
     for (auto c : cells) {

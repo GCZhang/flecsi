@@ -126,7 +126,6 @@ if(ENABLE_HYPRE)
    set(HYPRE_LIBRARY ${HYPRE_LIBRARIES})
  else()
    message (ERROR "HYPRE required for this build is not found")
-<<<<<<< HEAD
   endif ()
 endif (ENABLE_HYPRE)
 
@@ -135,11 +134,6 @@ endif (ENABLE_HYPRE)
 # FIXME: why do I have to put it here than the CMakeLists.txt in the subdir?
 set (THRUST_DIR "" CACHE PATH "Thrust directory")
 include_directories(${THRUST_DIR})
-=======
-  endif()
-
-endif(ENABLE_HYPRE)
->>>>>>> remotes/origin/execution
 
 #------------------------------------------------------------------------------#
 # Process id bits

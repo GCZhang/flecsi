@@ -37,10 +37,6 @@ public:
   dolfin_cell_t(flecsi::topology::mesh_topology_base_t &){}
   
   std::vector<size_t>
-<<<<<<< HEAD:flecsi/mesh/test/dolfin_triangle/dolfin_triangle_entity_types.h
-  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c,
-                  flecsi::id_t * e){
-=======
   create_entities(
     flecsi::id_t cell_id,
     size_t dim,
@@ -48,7 +44,6 @@ public:
     flecsi::id_t * e
   )
   {
->>>>>>> remotes/origin/execution:flecsi/specializations/dolfin_triangle/dolfin_triangle_entity_types.h
     flecsi::id_t* v = c.get_entities(cell_id, 0);
     e[0] = v[0];
     e[1] = v[1];

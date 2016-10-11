@@ -40,12 +40,7 @@ public:
   // FIXME: can we make it a pure virtual function?
   virtual
   std::vector<size_t>
-<<<<<<< HEAD:flecsi/mesh/test/sagittarius/sagittarius_entity_types.h
-  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c,
-                  flecsi::id_t * e){}
-=======
   create_entities(flecsi::id_t cell_id, size_t dim, flecsi::topology::domain_connectivity<2> & c, flecsi::id_t * e){}
->>>>>>> remotes/origin/execution:flecsi/specializations/sagittarius/sagittarius_entity_types.h
 };
 
 class sagittarius_quad_t : public sagittarius_cell_t {
@@ -54,12 +49,7 @@ public:
   sagittarius_quad_t(flecsi::topology::mesh_topology_base_t&) {}
 
   std::vector<size_t>
-<<<<<<< HEAD:flecsi/mesh/test/sagittarius/sagittarius_entity_types.h
-  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c,
-                  flecsi::id_t * e){
-=======
   create_entities(flecsi::id_t cell_id, size_t dim, flecsi::topology::domain_connectivity<2> & c, flecsi::id_t * e){
->>>>>>> remotes/origin/execution:flecsi/specializations/sagittarius/sagittarius_entity_types.h
     flecsi::id_t* v = c.get_entities(cell_id, 0);
     
     e[0] = v[0];
@@ -84,12 +74,7 @@ public:
   sagittarius_triangle_t(flecsi::topology::mesh_topology_base_t&) {}
 
   std::vector<size_t>
-<<<<<<< HEAD:flecsi/mesh/test/sagittarius/sagittarius_entity_types.h
-  create_entities(flecsi::id_t cell_id, size_t dim, domain_connectivity<2> & c,
-                  flecsi::id_t * e){
-=======
   create_entities(flecsi::id_t cell_id, size_t dim, flecsi::topology::domain_connectivity<2> & c, flecsi::id_t * e){
->>>>>>> remotes/origin/execution:flecsi/specializations/sagittarius/sagittarius_entity_types.h
     flecsi::id_t* v = c.get_entities(cell_id, 0);
 
     e[0] = v[0];

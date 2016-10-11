@@ -26,12 +26,7 @@ protected:
   dolfin_triangle_mesh_t<dolfin_triangle_types_t> dolfin;
 
   virtual void SetUp() override {
-<<<<<<< HEAD:flecsi/mesh/test/dolfin_triangle/test/metis_partition_mesh_dual.cc
-    // get cell to vertices connectivity
-    connectivity_t conn = dolfin.get_connectivity(0, 2, 0);
-=======
     flecsi::topology::connectivity_t& conn = dolfin.get_connectivity(0, 2, 0);
->>>>>>> remotes/origin/execution:flecsi/specializations/dolfin_triangle/test/metis_partition_mesh_dual.cc
 
     // we use vector.resize() there because we want to also change vector.end()
     // when we reserve memory. vector.reserve() DOES NOT change vector.end().

@@ -49,14 +49,6 @@ struct dolfin_triangle_types_t {
 
   using bindings = std::tuple<>;
 
-<<<<<<< HEAD:flecsi/mesh/test/dolfin_triangle/dolfin_triangle_types.h
-  template<size_t Domain, size_t Dimension>
-  static mesh_entity_base_t<num_domains> *
-  create_entity(mesh_topology_base_t *mesh, size_t num_vertices) {
-    switch (Domain) {
-      case 0: {
-        switch (Dimension) {
-=======
   template<size_t M, size_t D>
   static flecsi::topology::mesh_entity_base_t<num_domains> *
   create_entity(
@@ -66,7 +58,6 @@ struct dolfin_triangle_types_t {
     switch(M){
       case 0:{
         switch(D){
->>>>>>> remotes/origin/execution:flecsi/specializations/dolfin_triangle/dolfin_triangle_types.h
           case 1:
             return mesh->make<dolfin_edge_t>(*mesh);
           default:

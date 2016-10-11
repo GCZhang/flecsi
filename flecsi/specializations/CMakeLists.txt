@@ -76,7 +76,8 @@ cinch_add_unit(dolfin_triangle
   INPUTS dolfin_triangle/test/dolfin_triangle.blessed)
 
 cinch_add_unit(dolfin_triangle_mesh_partition
-  SOURCES dolfin_triangle/test/dolfin_triangle_mesh_partition.cc)
+  SOURCES dolfin_triangle/test/dolfin_triangle_mesh_partition.cc
+  INPUTS dolfin_triangle/test/dolfin_triangle_mesh_partition.blessed)
 
 cinch_add_unit(dolfin_triangle_connectivity
   SOURCES dolfin_triangle/test/dolfin_triangle_connectivity.cc)

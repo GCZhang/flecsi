@@ -14,19 +14,10 @@
 
 #include <cinchtest.h>
 
-<<<<<<< HEAD:flecsi/mesh/test/dolfin_triangle/test/dolfin_triangle.cc
-#include "../dolfin_triangle_mesh.h"
-=======
 #include "flecsi/specializations/dolfin_triangle/dolfin_triangle_mesh.h"
 #include "flecsi/specializations/dolfin_triangle/test/dolfin_triangle_fixture.h"
->>>>>>> remotes/origin/execution:flecsi/specializations/dolfin_triangle/test/dolfin_triangle.cc
 
 using namespace flecsi;
-
-class A_Dolfin_Triangle : public ::testing::Test {
-protected:
-  dolfin_triangle_mesh_t<dolfin_triangle_types_t> dolfin;
-};
 
 TEST_F(A_Dolfin_Triangle, number_of_vertices_should_be_10) {
   ASSERT_EQ(10u, dolfin.num_vertices());
