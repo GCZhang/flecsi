@@ -135,7 +135,7 @@ include_directories(${THRUST_DIR})
 # Cereal
 #------------------------------------------------------------------------------#
 
-  find_package (CEREAL REQUIRED)
+  find_package (Cereal REQUIRED)
   include_directories(${CEREAL_INCLUDE_DIRS})
 
 #------------------------------------------------------------------------------#
