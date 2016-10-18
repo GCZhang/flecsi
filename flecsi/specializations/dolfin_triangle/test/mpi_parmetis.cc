@@ -12,6 +12,9 @@
  * All rights reserved
  *~-------------------------------------------------------------------------~~*/
 
+#include <algorithm>
+#include <numeric>
+
 #include <cinchtest.h>
 #include <parmetis.h>
 
@@ -21,9 +24,6 @@
 #include <thrust/binary_search.h>
 #include <thrust/gather.h>
 
-#include "flecsi/execution/mpi_execution_policy.h"
-
-using namespace flecsi;
 using namespace testing;
 
 class mpi_parmetis_2way : public Test {

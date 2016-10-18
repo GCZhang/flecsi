@@ -61,7 +61,7 @@ protected:
   // the high order bits of FleCSI's id_t (which is essentially a 64-bit
   // unsigned integer).
   std::vector<idx_t> cell_sizes;
-  std::vector<mesh_graph_partition<idx_t>> cell_partitions;
+  std::vector<flecsi::topology::mesh_graph_partition<idx_t>> cell_partitions;
   std::vector<idx_t> part;
 };
 

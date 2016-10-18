@@ -89,6 +89,18 @@ if (ENABLE_PARTITION AND METIS_FOUND)
   cinch_add_unit(metis_partition_mesh_nodal
     SOURCES dolfin_triangle/test/metis_partition_mesh_nodal.cc
     LIBRARIES ${PARTITION_LIBRARIES})
+  cinch_add_unit(metis_partition_graph_kway
+    SOURCES dolfin_triangle/test/metis_partition_graph_kway.cc
+    LIBRARIES ${PARTITION_LIBRARIES}
+    INPUTS  dolfin_triangle/test/metis_partition_graph_kway.blessed)
+endif()
+
+if (ENABLE_PARTITION AND PARMETIS_FOUND)
+  cinch_add_unit(mpi_parmetis
+    SOURCES dolfin_triangle/test/mpi_parmetis.cc
+    LIBRARIES ${PARTITION_LIBRARIES}
+    POLICY MPI
+    THREADS 2)
 endif()
 
 #------------------------------------------------------------------------------#
