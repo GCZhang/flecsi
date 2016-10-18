@@ -1,11 +1,20 @@
 #include <cinchtest.h>
 #include <iostream>
 
-#include "flecsi/topology/index_space.h"
+//#include "flecsi/topology/index_space.h"
+#include "flecsi/execution/execution.h"
 
 using namespace std;
 using namespace flecsi;
 using namespace topology;
+
+double uniform(){
+  return double(rand())/RAND_MAX;
+}
+
+double uniform(double a, double b){
+  return a + (b - a) * uniform();
+}
 
 struct object_id{
   size_t id;
@@ -37,6 +46,8 @@ struct object{
   }
 
   object_id id;
+
+  double mass;
 };
 
 TEST(index_space, index_space) {
@@ -46,9 +57,32 @@ TEST(index_space, index_space) {
 
   for(size_t i = 0; i < 10000; ++i){
     is << new object(i);
+    is[i]->mass = uniform(0.0, 1.0);
   }
 
-  for(auto oi : is){
-    cout << oi->id << endl;
-  }
+  for_each(is, o, {
+    std::cout << o->id << endl;
+  }); // foreach
+
+	double total_mass(0.0);
+
+	reduce_each(is, o, total_mass, {
+   	total_mass += o->mass;
+	});
+
+  std::cout << "total_mass: " << total_mass << std::endl;
+
+#if 0
+  forall(is, o,
+    cout << o->id << endl;
+  );
+
+  double total_mass = 0;
+
+  reduce_all(is, o, total_mass,
+    total_mass += o->mass;
+  );
+
+  cout << "total_mass: " << total_mass << endl;
+#endif
 }

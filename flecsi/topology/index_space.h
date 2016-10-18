@@ -14,10 +14,34 @@
 
 #pragma once
 
+#include <algorithm>
 #include <type_traits>
+#include <vector>
 
 namespace flecsi {
 namespace topology {
+
+/*----------------------------------------------------------------------------*
+ * class index_space
+ *----------------------------------------------------------------------------*/
+
+/*! 
+ \class index_space
+ \brief index_space provides a compile-time
+  configurable and iterable container of objects, e.g. mesh/tree topology
+  entities and their id's. Index space defines the concept of STORAGE -
+  whether the actual entities referenced are stored within this index space
+  OR contained in a 'master' index space. OWNERSHIP - whether its set of id's
+  are owned by this index space or aliased to another index space and then must
+  be copied before this index space can then modify them. SORTED - refers to if
+  the id's are sorted and can then have set operations directly applied to them,
+  else the index space must first be sorted. To make operations on index spaces
+  faster, the index space is parameterized on a number of these parameters and
+  can be efficiently recast depending on how it is to be used: STORAGE - if true
+  then this is a 'master' index space with its own storage. OWNED - if true then
+  id ownership is definitely true, else must check owned_ at runtime. SORTED -
+  if true then id's are definitely stored and shall remain in sorted order.
+*/
 
 template<class T,
          bool STORAGE = false,
@@ -43,6 +67,9 @@ public:
   template<typename S>
   using reduce_function = std::function<void(T&, S&)>;
 
+  /*!
+    Iterable id range.
+   */
   class id_range_{
   public:
     id_range_(const id_range_& r)
@@ -74,6 +101,9 @@ public:
     size_t end_;
   };
 
+  /*!
+    Iterator base, const be parameterized with 'T' or 'const T'.
+   */
   template<class S>
   class iterator_base_{
    public:
@@ -120,6 +150,9 @@ public:
     item_vector_t* s_;
   };
 
+  /*!
+    Predicated iterator.
+   */
   template<class S, class P>
   class iterator_ : public iterator_base_<S>{
   public:
@@ -159,6 +192,9 @@ public:
     }
   };
 
+  /*!
+    Non-predicated iterator.
+   */
   template<class S>
   class iterator_<S, void> : public iterator_base_<S>{
   public:
@@ -189,6 +225,9 @@ public:
     static_assert(OWNED, "expected OWNED");
   }
 
+  /*!
+    Slice an existing index space.
+   */
   template<class S, bool STORAGE2, bool OWNED2, bool SORTED2, class F2> 
   index_space(const index_space<S, STORAGE2, OWNED2, SORTED2, F2>& is,
               size_t begin, size_t end)
@@ -201,6 +240,9 @@ public:
     static_assert(!OWNED, "expected !OWNED");
   }
 
+  /*!
+    Alias an existing index space unless OWNED.
+   */
   index_space(const index_space& is)
   : v_(OWNED ? new id_vector_t(*is.v_) : is.v_),
     begin_(is.begin_), end_(is.end_), owned_(OWNED), sorted_(is.sorted_), 
@@ -236,6 +278,9 @@ public:
     }
   }
 
+  /*!
+    Alias an existing index space unless OWNED.
+   */
   index_space& operator=(const index_space& is){
     assert(!STORAGE && "invalid assignment");
 
@@ -313,6 +358,22 @@ public:
   auto end() const{
     return iterator_<const T, F>(s_, *v_, end_, end_); 
   }
+
+  size_t begin_offset() const{
+    return begin_;
+  }
+
+  size_t end_offset() const{
+    return end_;
+  }
+
+  T& get_offset(size_t offset){
+    return (*s_)[(*v_)[offset].index_space_index()];
+  }
+
+  const T& get_offset(size_t offset) const{
+    return (*s_)[(*v_)[offset].index_space_index()];
+  }  
 
   id_range_ ids() const{
     return id_range_(*v_, begin_, end_);
@@ -403,6 +464,9 @@ public:
     set_master(const_cast<index_space<T, STORAGE2, OWNED2, SORTED2, F2>&>(master));
   }
 
+  /*!
+    Set storage to point to a master index space.
+   */
   template<bool STORAGE2, bool OWNED2, bool SORTED2, class F2>
   void set_master(index_space<T, STORAGE2, OWNED2, SORTED2, F2>& master){
     s_ = reinterpret_cast<item_vector_t*>(master.s_);
@@ -724,11 +788,17 @@ private:
   bool sorted_;
   item_vector_t* s_;
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   size_t begin_push_(){
     static_assert(OWNED, "expected OWNED");
     return v_->size();
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   void begin_push_(size_t n){
     static_assert(OWNED, "expected OWNED");
     assert(begin_ == 0);
@@ -737,23 +807,36 @@ private:
     end_ += n;
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   void batch_push_(id_t index){
     static_assert(OWNED, "expected OWNED");
     v_->push_back(index);
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   void push_(id_t index){
     static_assert(OWNED, "expected OWNED");
     v_->push_back(index);
     ++end_;
   }
 
+
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   void end_push_(size_t n){
     static_assert(OWNED, "expected OWNED");
     assert(begin_ == 0);
     end_ += v_->size() - n;
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   void resize_(size_t n){
     static_assert(OWNED, "expected OWNED");
     assert(begin_ == 0);
@@ -761,19 +844,31 @@ private:
     end_ = v_->size();
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   void fill_(id_t index){
     static_assert(OWNED, "expected OWNED");
     std::fill(v_->begin(), v_->end(), index);
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   id_vector_t& id_vec_(){
     return *v_;
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   typename id_vector_t::iterator index_begin_(){
     return v_->begin();
   }
 
+  /*!
+    Private methods for efficiently populating an index space.
+   */
   typename id_vector_t::iterator index_end_(){
     return v_->end();
   }

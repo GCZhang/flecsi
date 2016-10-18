@@ -1,16 +1,25 @@
 /*~--------------------------------------------------------------------------~*
- * Copyright (c) 2015 Los Alamos National Security, LLC
- * All rights reserved.
+ *  @@@@@@@@  @@           @@@@@@   @@@@@@@@ @@
+ * /@@/////  /@@          @@////@@ @@////// /@@
+ * /@@       /@@  @@@@@  @@    // /@@       /@@
+ * /@@@@@@@  /@@ @@///@@/@@       /@@@@@@@@@/@@
+ * /@@////   /@@/@@@@@@@/@@       ////////@@/@@
+ * /@@       /@@/@@//// //@@    @@       /@@/@@
+ * /@@       @@@//@@@@@@ //@@@@@@  @@@@@@@@ /@@
+ * //       ///  //////   //////  ////////  //
+ *
+ * Copyright (c) 2016 Los Alamos National Laboratory, LLC
+ * All rights reserved
  *~--------------------------------------------------------------------------~*/
 
 #ifndef flecsi_mpilegion_context_policy_h
 #define flecsi_mpilegion_context_policy_h
 
-///
-// \file mpilegion/context_policy.h
-// \authors bergen
-// \date Initial file creation: Jul 14, 2016
-///
+/*!
+ * \file mpilegion/context_policy.h
+ * \authors bergen
+ * \date Initial file creation: Jul 14, 2016
+ */
 
 #include <memory>
 #include <functional>
@@ -24,21 +33,23 @@
 #include "flecsi/execution/common/task_hash.h"
 #include "flecsi/execution/mpilegion/legion_handshake.h"
 #include "flecsi/execution/mpilegion/mpi_legion_interop.h"
+#include "flecsi/partition/init_partitions_task.h"
 
 namespace flecsi {
 namespace execution {
 
-///
-// \class mpilegion_context_policy_t mpilegion/context_policy.h
-// \brief mpilegion_context_policy_t provides...
-///
+/*!
+  \class mpilegion_context_policy_t mpilegion/context_policy.h
+  \brief mpilegion_context_policy_t provides...
+ */
 struct mpilegion_context_policy_t
 {
 
   using lr_context_t = LegionRuntime::HighLevel::Context;
   using lr_runtime_t = LegionRuntime::HighLevel::HighLevelRuntime;
   using lr_task_t = LegionRuntime::HighLevel::Task;
-  using lr_regions_t = std::vector<LegionRuntime::HighLevel::PhysicalRegion>;
+  using lr_regions_t =
+    std::vector<LegionRuntime::HighLevel::PhysicalRegion>;
 
   const static LegionRuntime::HighLevel::Processor::Kind lr_loc =
     LegionRuntime::HighLevel::Processor::LOC_PROC;
@@ -48,9 +59,9 @@ struct mpilegion_context_policy_t
   ext_legion_handshake_t &handshake_=ext_legion_handshake_t::instance();
   mpi_legion_interop_t interop_helper_;
 
-  //--------------------------------------------------------------------------//
-  // Initialization.
-  //--------------------------------------------------------------------------//
+  /*--------------------------------------------------------------------------*
+   * Initialization.
+   *--------------------------------------------------------------------------*/
 
   int
   initialize(
@@ -64,6 +75,29 @@ struct mpilegion_context_policy_t
     lr_runtime_t::set_top_level_task_id(TOP_LEVEL_TASK_ID);
     lr_runtime_t::register_legion_task<mpilegion_runtime_driver>(
       TOP_LEVEL_TASK_ID, lr_loc, true, false);
+
+    lr_runtime_t::register_legion_task<flecsi::dmp::parts,
+      flecsi::dmp::init_partitions>(
+      task_ids_t::instance().init_cell_partitions_task_id,lr_loc, true, false);
+
+    lr_runtime_t::register_legion_task<connect_to_mpi_task>(
+        task_ids_t::instance().connect_mpi_task_id, lr_loc,
+        false, true, AUTO_GENERATE_ID,
+        LegionRuntime::HighLevel::TaskConfigOptions(true/*leaf*/),
+        "connect_to_mpi_task");
+
+     lr_runtime_t::register_legion_task<handoff_to_mpi_task>(
+        task_ids_t::instance().handoff_to_mpi_task_id, lr_loc,
+        false, true, AUTO_GENERATE_ID,
+        LegionRuntime::HighLevel::TaskConfigOptions(true/*leaf*/),
+        "handoff_to_mpi_task");
+
+     lr_runtime_t::register_legion_task<wait_on_mpi_task>(
+        task_ids_t::instance().wait_on_mpi_task_id, lr_loc,
+        false, true, AUTO_GENERATE_ID,
+        LegionRuntime::HighLevel::TaskConfigOptions(true/*leaf*/),
+        "wait_on_mpi_task");
+
 
     // Register user tasks
     for(auto f: task_registry_) {
@@ -85,10 +119,16 @@ struct mpilegion_context_policy_t
     interop_helper_.wait_on_legion();
 
     //while loop to do some mpi tasks
-
-     while(interop_helper_.call_mpi_)
+     while(ext_legion_handshake_t::instance().call_mpi_)
      {
-       interop_helper_.shared_func_();
+#ifdef LEGIONDEBUG
+       int rank;
+       MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+       std::cout<< "inside while loop N " << " rank = "<<rank<<
+          "rank_from_handshake = " << ext_legion_handshake_t::instance().rank_
+          <<std::endl;
+#endif
+       ext_legion_handshake_t::instance().shared_func_();
        interop_helper_.handoff_to_legion();
        interop_helper_.wait_on_legion();
       }
@@ -99,9 +139,9 @@ struct mpilegion_context_policy_t
 
   } // initialize
 
-  ///
-  // Reset the legion runtime state.
-  ///
+  /*!
+    Reset the legion runtime state.
+   */
   void
   set_state(
     lr_context_t & context,
@@ -113,17 +153,16 @@ struct mpilegion_context_policy_t
     state_.reset(new legion_runtime_state_t(context, runtime, task, regions));
   } // set_state
 
-  //--------------------------------------------------------------------------//
-  // Task registraiton.
-  //--------------------------------------------------------------------------//
+  /*--------------------------------------------------------------------------*
+   * Task registraiton.
+   *--------------------------------------------------------------------------*/
 
   using task_id_t = LegionRuntime::HighLevel::TaskID;
   using register_function_t = std::function<void(size_t)>;
   using unique_fid_t = unique_id_t<task_id_t>;
 
-  ///
-  //
-  ///
+  /*!
+   */
   bool
   register_task(
     task_hash_key_t key,
@@ -138,9 +177,8 @@ struct mpilegion_context_policy_t
     return false;
   } // register_task
 
-  ///
-  //
-  ///
+  /*!
+   */
   task_id_t
   task_id(
     task_hash_key_t key
@@ -152,13 +190,12 @@ struct mpilegion_context_policy_t
     return task_registry_[key].first;
   } // task_id
 
-  //--------------------------------------------------------------------------//
-  // Function registraiton.
-  //--------------------------------------------------------------------------//
+  /*--------------------------------------------------------------------------*
+   * Function registraiton.
+   *--------------------------------------------------------------------------*/
 
-  ///
-  //
-  ///
+  /*!
+   */
   template<typename T>
   bool
   register_function(
@@ -176,9 +213,8 @@ struct mpilegion_context_policy_t
     return false;
   } // register_function
   
-  ///
-  //
-  ///
+  /*!
+   */
   std::function<void(void)> *
   function(
     size_t key
@@ -187,9 +223,9 @@ struct mpilegion_context_policy_t
     return function_registry_[key];
   } // function
 
-  //--------------------------------------------------------------------------//
-  // Legion runtime accessors.
-  //--------------------------------------------------------------------------//
+  /*--------------------------------------------------------------------------*
+   * Legion runtime accessors.
+   *--------------------------------------------------------------------------*/
 
   lr_context_t & context() { return state_->context; }
   lr_runtime_t * runtime() { return state_->runtime; }
@@ -198,12 +234,12 @@ struct mpilegion_context_policy_t
   
 private:
 
-  ///
-  // \struct legion_runtime_runtime_state_t legion/context_policy.h
-  // \brief legion_runtime_state_t provides storage for Legion runtime
-  //        information that can be reinitialized as needed to store const
-  //        data types and references as required by the Legion runtime.
-  ///
+  /*!
+    \struct legion_runtime_runtime_state_t legion_context_policy.h
+    \brief legion_runtime_state_t provides storage for Legion runtime
+      information that can be reinitialized as needed to store const
+      data types and references as required by the Legion runtime.
+   */
   struct legion_runtime_state_t {
 
     legion_runtime_state_t(lr_context_t & context_, lr_runtime_t * runtime_,
@@ -219,18 +255,18 @@ private:
 
   std::shared_ptr<legion_runtime_state_t> state_;
 
-  //--------------------------------------------------------------------------//
-  // Task registry
-  //--------------------------------------------------------------------------//
+  /*--------------------------------------------------------------------------*
+   * Task registry
+   *-------------------------------------------------------------------------*/
 
   // Define the map type using the task_hash_t hash function.
   std::unordered_map<task_hash_t::key_t,
     std::pair<task_id_t, register_function_t>,
     task_hash_t> task_registry_;
 
-  //--------------------------------------------------------------------------//
-  // Function registry
-  //--------------------------------------------------------------------------//
+  /*--------------------------------------------------------------------------*
+   * Function registry
+   *--------------------------------------------------------------------------*/
 
   std::unordered_map<size_t, std::function<void(void)> *>
     function_registry_;

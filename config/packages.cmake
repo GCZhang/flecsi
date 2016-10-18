@@ -35,17 +35,9 @@ set(FLECSI_RUNTIME_LIBRARIES)
 if(FLECSI_RUNTIME_MODEL STREQUAL "legion" OR
   FLECSI_RUNTIME_MODEL STREQUAL "mpilegion")
 
-  find_package (legion QUIET NO_MODULE)
+  find_package(Legion REQUIRED)
 
-  set(Legion_INSTALL_DIR "" CACHE PATH
-    "Path to the Legion install directory")
-
-  if(NOT Legion_INSTALL_DIR STREQUAL "")
-    message(WARNING "Legion_INSTALL_DIR is obsolete, "
-      "use CMAKE_PREFIX_PATH instead (and rebuild the latest"
-      " version third-party libraries)")
-    list(APPEND CMAKE_PREFIX_PATH "${Legion_INSTALL_DIR}")
-  endif()
+  message(STATUS "Legion found: ${LEGION_FOUND}")
 
 endif()
 
@@ -67,16 +59,13 @@ elseif(FLECSI_RUNTIME_MODEL STREQUAL "legion")
 
   add_definitions(-DFLECSI_RUNTIME_MODEL_legion)
 
-  if(NOT legion_FOUND)
-    message(FATAL_ERROR "Legion is required for this build configuration")
-  endif(NOT legion_FOUND)
-  
-  include_directories(${LEGION_INCLUDE_DIRS})
   if(NOT APPLE)
-    set(FLECSI_RUNTIME_LIBRARIES ${LEGION_LIBRARIES} -ldl)
+    set(FLECSI_RUNTIME_LIBRARIES  -ldl ${LEGION_LIBRARIES} ${MPI_LIBRARIES})
   else()
-    message("Skipping -ldl because APPLE")
+    set(FLECSI_RUNTIME_LIBRARIES  ${LEGION_LIBRARIES} ${MPI_LIBRARIES})
   endif()
+
+  include_directories(${LEGION_INCLUDE_DIRS})
 
 #
 # MPI interface
@@ -84,6 +73,12 @@ elseif(FLECSI_RUNTIME_MODEL STREQUAL "legion")
 elseif(FLECSI_RUNTIME_MODEL STREQUAL "mpi")
 
   add_definitions(-DFLECSI_RUNTIME_MODEL_mpi)
+
+  if(NOT APPLE)
+    set(FLECSI_RUNTIME_LIBRARIES  -ldl ${MPI_LIBRARIES})
+  else()
+    set(FLECSI_RUNTIME_LIBRARIES ${MPI_LIBRARIES})
+  endif()
 
 #
 #MPI+Legion interface
@@ -96,12 +91,13 @@ elseif(FLECSI_RUNTIME_MODEL STREQUAL "mpilegion")
  
   add_definitions(-DFLECSI_RUNTIME_MODEL_mpilegion)
 
-  if(NOT legion_FOUND)
-    message(FATAL_ERROR "Legion is required for this build configuration")
-  endif(NOT legion_FOUND)
+  if(NOT APPLE)
+    set(FLECSI_RUNTIME_LIBRARIES  -ldl ${LEGION_LIBRARIES} ${MPI_LIBRARIES})
+  else()
+    set(FLECSI_RUNTIME_LIBRARIES  ${LEGION_LIBRARIES} ${MPI_LIBRARIES})
+  endif()
 
   include_directories(${LEGION_INCLUDE_DIRS})
-  set(FLECSI_RUNTIME_LIBRARIES ${LEGION_LIBRARIES} -ldl ${MPI_LIBRARIES})
 
 #
 # Default
@@ -134,6 +130,13 @@ endif (ENABLE_HYPRE)
 # FIXME: why do I have to put it here than the CMakeLists.txt in the subdir?
 set (THRUST_DIR "" CACHE PATH "Thrust directory")
 include_directories(${THRUST_DIR})
+
+#------------------------------------------------------------------------------#
+# Cereal
+#------------------------------------------------------------------------------#
+
+  find_package (CEREAL REQUIRED)
+  include_directories(${CEREAL_INCLUDE_DIRS})
 
 #------------------------------------------------------------------------------#
 # Process id bits
