@@ -95,11 +95,6 @@ TEST_F(mpi_parmetis_2way, comm_size_should_be_2) {
 }
 
 TEST_F(mpi_parmetis_2way, vertices_are_in_partition_0_or_1) {
-  std::cout << "rank: " << rank << " partition: ";
-  for (auto i: part) {
-    std::cout << i << " ";
-  }
-  std::cout << std::endl;
   ASSERT_THAT(part, Each(AnyOf(Eq(0), Eq(1))));
 }
 
