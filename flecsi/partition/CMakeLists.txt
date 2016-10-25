@@ -56,6 +56,14 @@ if(FLECSI_RUNTIME_MODEL STREQUAL "mpilegion")
     LIBRARIES flecsi)
 endif()
 
+if (ENABLE_PARTITION AND PARMETIS_FOUND)
+  cinch_add_unit(parmetis_partitioner
+    SOURCES test/parmetis_partitioner.cc
+    LIBRARIES ${PARTITION_LIBRARIES}
+    POLICY MPI
+    THREADS 2)
+endif()
+
 endif()
 
 #----------------------------------------------------------------------------~-#

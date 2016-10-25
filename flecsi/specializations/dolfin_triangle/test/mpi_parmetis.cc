@@ -97,7 +97,6 @@ protected:
   int rank;
 
   std::vector<idx_t> part;
-
 };
 
 TEST_F(mpi_parmetis_2way, comm_size_should_be_2) {
@@ -199,19 +198,21 @@ TEST_F(mpi_parmetis_2way, redistribute_cell_ids) {
   }
 }
 
-#if 0
+
 TEST_F(mpi_parmetis_2way, redistribute_cell_2_cell_connectivity) {
-  // give each element in adjncy its partition number
-  std::vector<int> gather_list(11);
-  thrust::upper_bound(xadj[rank]+1, xadj[rank]+6,
+  // give each element in adjncy list its partition number
+  auto num_adjncy = cell_partitions[rank].index.size();
+  std::vector<int> gather_list(num_adjncy);
+  thrust::upper_bound(cell_partitions[rank].offset.begin()+1,
+                      cell_partitions[rank].offset.end(),
                       thrust::counting_iterator<int>(0),
-                      thrust::counting_iterator<int>(11),
+                      thrust::counting_iterator<int>(num_adjncy),
                       gather_list.begin());
   ASSERT_THAT(gather_list, ElementsAreArray({0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4}));
 
-  std::vector<int> part_for_adjncy(11);
+  std::vector<int> part_for_adjncy(num_adjncy);
   thrust::gather(gather_list.begin(), gather_list.end(),
-                 part,
+                 part.begin(),
                  part_for_adjncy.begin());
   if (rank == 0)
     ASSERT_THAT(part_for_adjncy, ElementsAreArray({0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1}));
@@ -221,11 +222,13 @@ TEST_F(mpi_parmetis_2way, redistribute_cell_2_cell_connectivity) {
 
   // sort ajdncy according to their destination partition
   thrust::stable_sort_by_key(part_for_adjncy.begin(), part_for_adjncy.end(),
-                             adjncy[rank]);
+                             cell_partitions[rank].index.begin());
   if (rank == 0)
-    ASSERT_THAT(adjncy[rank], ElementsAreArray({1, 9, 2, 0, 3, 1, 4, 8, 2, 5, 3}));
+    ASSERT_THAT(cell_partitions[rank].index,
+                ElementsAreArray({1, 9, 2, 0, 3, 1, 4, 8, 2, 5, 3}));
   else
-    ASSERT_THAT(adjncy[rank], ElementsAreArray({9, 3, 7, 0, 8, 6, 4, 7, 5, 8, 6,}));
+    ASSERT_THAT(cell_partitions[rank].index,
+                ElementsAreArray({9, 3, 7, 0, 8, 6, 4, 7, 5, 8, 6,}));
 
   // calculate how many elements of adjncy to send to each destination
   // in terms of pairs of (destination, number of cells).
@@ -274,29 +277,39 @@ TEST_F(mpi_parmetis_2way, redistribute_cell_2_cell_connectivity) {
   // All to all communication to exchange adjncy elements
   int total_recv = thrust::reduce(recv_counts.begin(), recv_counts.end());
   std::vector<int> my_adjncy(total_recv);
-  MPI_Alltoallv(adjncy[rank],     send_counts.data(), send_disp.data(), MPI_INT,
-                my_adjncy.data(), recv_counts.data(), recv_disp.data(), MPI_INT,
+  MPI_Alltoallv(cell_partitions[rank].index.data(),
+                send_counts.data(), send_disp.data(), MPI_INT,
+                my_adjncy.data(),
+                recv_counts.data(), recv_disp.data(), MPI_INT,
                 MPI_COMM_WORLD);
   if (rank == 0)
     ASSERT_THAT(my_adjncy, ElementsAreArray({1, 9, 2, 0, 3, 1, 9, 3, 7, 0, 8}));
   else
     ASSERT_THAT(my_adjncy, ElementsAreArray({4, 8, 2, 5, 3, 6, 4, 7, 5, 8, 6,}));
 
+  // number of cells on this rank.
+  // TODO: how to make this more general? is this before redistribution or
+  // after redistribution of cells?
+  int num_cells = cell_sizes[rank];
+
   // calculate the "degrees" of each cell as the "length"
   std::vector<int> cell_degrees(num_cells);
   // Note: we assume xadj starts from 0 and shift the calculation by one element.
-  std::adjacent_difference(xadj[rank]+1, xadj[rank]+6, cell_degrees.begin());
+  //std::adjacent_difference(xadj[rank]+1, xadj[rank]+6, cell_degrees.begin());
+  std::adjacent_difference(cell_partitions[rank].offset.begin()+1,
+                           cell_partitions[rank].offset.end(),
+                           cell_degrees.begin());
   ASSERT_THAT(cell_degrees, ElementsAreArray({2, 2, 2, 3, 2}));
 
   // sort cell degrees according to their destination partition
-  thrust::stable_sort_by_key(part, part+5, cell_degrees.begin());
+  thrust::stable_sort_by_key(part.begin(), part.end(), cell_degrees.begin());
   if (rank == 0)
     ASSERT_THAT(cell_degrees, ElementsAreArray({2, 2, 2, 3, 2}));
   else
     ASSERT_THAT(cell_degrees, ElementsAreArray({3, 2, 2, 2, 2}));
 
   // shuffle again
-  thrust::reduce_by_key(part, part+5,
+  thrust::reduce_by_key(part.begin(), part.end(),
                         thrust::constant_iterator<int>(1),
                         destinations.begin(),
                         send_counts.begin());
@@ -334,6 +347,5 @@ TEST_F(mpi_parmetis_2way, redistribute_cell_2_cell_connectivity) {
     ASSERT_THAT(my_xadj, ElementsAreArray({0, 2, 4, 6, 9, 11}));
   else
     ASSERT_THAT(my_xadj, ElementsAreArray({0, 3, 5, 7, 9, 11}));
-}
 
-#endif
+}
