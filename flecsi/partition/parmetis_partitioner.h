@@ -23,9 +23,12 @@
 
 #define THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_CPP
 #include <thrust/iterator/constant_iterator.h>
+#include <thrust/iterator/counting_iterator.h>
 #include <thrust/sort.h>
 #include <thrust/binary_search.h>
 #include <thrust/gather.h>
+#include <thrust/transform.h>
+#include <thrust/functional.h>
 
 #include "flecsi/topology/mesh_topology.h"
 #include "flecsi/partition/index_partition.h"
@@ -49,13 +52,13 @@ public:
 
   // Input parameter graph_partitions can not be made const because ParMetis
   // is not const correct.
-  void partition(mesh_graph_partitions &graph_partitions,
+  void partition(mesh_graph_partition<idx_t> &graph_partition,
                  index_partition_t &index_partition) {
     // input parameters for ParMetis
     idx_t wgtflag = 0;  // no weight
     idx_t numflag = 0;  // no flag
     idx_t ncon = 1;
-    idx_t nparts = 2;   // partition into two pieces
+    idx_t nparts = comm_size;   // partition into # of ranks pieces
 
     // No, these three arrays can not be NULL
     real_t tpwgts[2] = {0.5, 0.5};
@@ -66,16 +69,17 @@ public:
 
     // Reserve memory of number of cells on this rank for output from ParMetis
     int number_of_cells =
-      graph_partitions[rank].partition[rank+1] -
-        graph_partitions[rank].partition[rank];
+      graph_partition.partition[rank+1] -
+      graph_partition.partition[rank];
+
     std::vector<idx_t> part(number_of_cells);
     // std::cout << "number of cells: " << number_of_cells << std::endl;
 
     // FIXME: How does ParMetis find out how many vertices are there on each node?
     auto ret = ParMETIS_V3_PartKway(
-      graph_partitions[rank].partition.data(),  // vtxdist
-      graph_partitions[rank].offset.data(),     // xadj
-      graph_partitions[rank].index.data(),      // adjncy
+      graph_partition.partition.data(),  // vtxdist
+      graph_partition.offset.data(),     // xadj
+      graph_partition.index.data(),      // adjncy
       nullptr, /* vwgt */
       nullptr, /* adjwgt */
       &wgtflag,
@@ -93,6 +97,11 @@ public:
     redistribute(part, index_partition);
   }
 
+  void partition(mesh_graph_partitions &graph_partitions,
+                 index_partition_t &index_partition) {
+    partition(graph_partitions[rank], index_partition);
+  }
+
   // TODO: should we make partition a reference? Do we want to reuse partition
   // in the caller after redistribute() mangle with it?
   void redistribute(std::vector<idx_t> partition,
@@ -102,6 +111,7 @@ public:
 
     // we have to initialized cell_id_start to 0 since MPI_Excan does not update
     // it on Rank 0.
+    // TODO: is this just the vtxdist in ParMetis?
     int cell_id_start = 0;
     // Exclusive scan to find out the start cell entity id on this rank.
     // This assumes:
@@ -119,12 +129,24 @@ public:
 
     // calculate pairs of (destination, number of cells).
     std::vector<int> destinations(comm_size);
+    std::iota(destinations.begin(), destinations.end(), 0);
+
     std::vector<int> send_counts(comm_size);
 
-    thrust::reduce_by_key(partition.begin(), partition.end(),
-                          thrust::constant_iterator<int>(1),
-                          destinations.begin(),
-                          send_counts.begin());
+    std::vector<int> lbs(comm_size);
+    thrust::lower_bound(partition.begin(), partition.end(),
+                        thrust::counting_iterator<int>(0),
+                        thrust::counting_iterator<int>(0)+ comm_size,
+                        lbs.begin());
+    std::vector<int> ubs(comm_size);
+    thrust::upper_bound(partition.begin(), partition.end(),
+                        thrust::counting_iterator<int>(0),
+                        thrust::counting_iterator<int>(0)+ comm_size,
+                        ubs.begin());
+
+    thrust::transform(ubs.begin(), ubs.end(),
+                      lbs.begin(), send_counts.begin(),
+                      thrust::minus<int>());
 
     // All to all communication to tell others how many cells are coming.
     std::vector<int> recv_counts(comm_size);
@@ -151,7 +173,7 @@ public:
                   my_cell_ids.data(), recv_counts.data(), recv_disp.data(), MPI_INT,
                   MPI_COMM_WORLD);
 
-    index_partition.exclusive = my_cell_ids;
+    index_partition.exclusive = std::move(my_cell_ids);
   }
 private:
   MPI_Comm mpi_comm;

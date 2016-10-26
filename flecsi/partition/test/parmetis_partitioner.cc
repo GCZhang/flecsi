@@ -24,6 +24,7 @@ protected:
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    // FIXME: assuming num_cells is evenly divisible by comm_size;
     auto cells_per_rank = dolfin.num_cells()/comm_size;
     for (auto i = 0; i < comm_size - 1 ; i++) {
       cell_sizes.push_back(cells_per_rank);

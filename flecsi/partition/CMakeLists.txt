@@ -62,6 +62,11 @@ if (ENABLE_PARTITION AND PARMETIS_FOUND)
     LIBRARIES ${PARTITION_LIBRARIES}
     POLICY MPI
     THREADS 2)
+  cinch_add_unit(parmetis_partitioner_ugrid2d
+          SOURCES test/parmetis_partitioner_ugrid2d.cc
+          LIBRARIES ${PARTITION_LIBRARIES}
+          POLICY MPI
+          THREADS 2)
 endif()
 
 endif()
