@@ -56,12 +56,14 @@ public:
                  index_partition_t &index_partition) {
     // input parameters for ParMetis
     idx_t wgtflag = 0;  // no weight
-    idx_t numflag = 0;  // no flag
+    idx_t numflag = 0;  // C/C++ style index from zero
     idx_t ncon = 1;
     idx_t nparts = comm_size;   // partition into # of ranks pieces
 
-    // No, these three arrays can not be NULL
-    real_t tpwgts[2] = {0.5, 0.5};
+    // the fraction of "vertices" in each piece.
+    std::vector<real_t> tpwgts(comm_size, 1.0/comm_size);
+
+    // No, these arrays can not be NULL
     real_t ubvec[1] = {1.05};
     idx_t options[1] = {0};
 
@@ -73,7 +75,6 @@ public:
       graph_partition.partition[rank];
 
     std::vector<idx_t> part(number_of_cells);
-    // std::cout << "number of cells: " << number_of_cells << std::endl;
 
     // FIXME: How does ParMetis find out how many vertices are there on each node?
     auto ret = ParMETIS_V3_PartKway(
@@ -86,7 +87,7 @@ public:
       &numflag,
       &ncon,
       &nparts,
-      tpwgts,
+      tpwgts.data(),
       ubvec,
       options,
       &edgecut,

@@ -22,13 +22,14 @@ using namespace testing;
 
 class parmetis_partitioner_ugrid2d : public Test {
 protected:
-  static constexpr int N = 4;
+  static constexpr int N = 8;
 
   virtual  void SetUp() {
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     // FIXME: assuming N*N is evenly divisible by comm_size;
+    ASSERT_EQ(N*N % comm_size, 0);
     auto cells_per_rank = N*N/comm_size;
     auto cell_id_start = cells_per_rank * rank;
 
@@ -76,8 +77,6 @@ protected:
     partitioner.partition(cell_partition, index_partition);
   }
 
-  //using mesh_graph_partitions = std::vector<mesh_graph_partition<idx_t>>;
-  //mesh_graph_partitions cell_partitions;
   using  mesh_partition = mesh_graph_partition<idx_t>;
   mesh_partition cell_partition;
 
@@ -89,6 +88,21 @@ protected:
 };
 
 TEST_F(parmetis_partitioner_ugrid2d, dump) {
+//  std::cout << "xadj: ";
+//  for (auto i : cell_partition.offset) {
+//    std::cout << i << " ";
+//  }
+//  std::cout << std::endl;
+//  std::cout << "adjncy: ";
+//  for (auto i : cell_partition.index) {
+//    std::cout << i << " ";
+//  }
+//  std::cout << std::endl;
+//  std::cout << "vtxdist: ";
+//  for (auto i : cell_partition.partition) {
+//    std::cout << i << " ";
+//  }
+//  std::cout << std::endl;
   std::cout << "cell id: ";
   for (auto i : index_partition.exclusive) {
     std::cout << i << " ";
