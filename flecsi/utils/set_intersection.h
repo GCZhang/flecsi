@@ -30,7 +30,16 @@ namespace utils
 {
 
 ////////////////////////////////////////////////////////////////////////////////
-//! \brief Exectute something for each element of a tuple
+//! \brief Determine if two sets intersect.
+//! 
+//! This is very similar to the way std::includes works.  It just determines
+//! whether two sets intersect and returns a boolean result. It does not
+//! compute the actual intersection.
+//!
+//! \param [in] first1,last1  The first sorted range of elements to be examined.
+//! \param [in] first2,last2  The second sorted range of elements to be 
+//!                           examined.
+//!
 //! \remark This function has complexity O(n + m)
 ////////////////////////////////////////////////////////////////////////////////
 template<class InputIt1, class InputIt2>
@@ -42,6 +51,42 @@ bool intersects(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2
       continue;
     } 
     if (*first2 < *first1) {
+      ++first2;
+      continue;
+    } 
+    return true;
+  }
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//! \brief Determine if two sets intersect.
+//! 
+//! This is very similar to the way std::includes works.  It just determines
+//! whether two sets intersect and returns a boolean result. It does not
+//! compute the actual intersection.
+//!
+//! \param [in] first1,last1  The first sorted range of elements to be examined.
+//! \param [in] first2,last2  The second sorted range of elements to be 
+//!                           examined.
+//! \param [in] comp  A comparison function object which returns true if the
+//!                   first argument is less than (i.e. ordered before) the 
+//!                   second.
+//!
+//! \remark This function has complexity O(n + m)
+////////////////////////////////////////////////////////////////////////////////
+template<class InputIt1, class InputIt2, class Compare>
+bool intersects(
+  InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2,
+  Compare comp
+)
+{
+  while (first1 != last1 && first2 != last2) {
+    if ( comp(*first1, *first2) ) {
+      ++first1;
+      continue;
+    } 
+    if ( comp(*first2 < *first1) ) {
       ++first2;
       continue;
     } 
