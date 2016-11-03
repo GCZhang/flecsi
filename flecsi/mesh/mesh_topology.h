@@ -1603,6 +1603,13 @@ private:
     if (!out_conn.empty()) {
       return;
     } // if
+   
+    // Not sure why, but std::includes needs to use a comparison function
+    // with the arguments explicitly typed.  Use "auto" instead of "id_t"
+    // and compilation fails.  Don't use the comparison function, and you
+    // get different results, even though this just calls operator<.
+    auto less = []( const id_t & a, const id_t & b ) 
+    { return a < b; };
 
     // the number of each entity type
     auto num_from_ent = num_entities_(FD, FM);
@@ -1674,7 +1681,7 @@ private:
             // to this connection set
             if ( D < TD ) {
               if ( std::includes( from_verts.begin(), from_verts.end(),
-                                  to_verts.begin(), to_verts.end()) )
+                                  to_verts.begin(), to_verts.end()), less )
                 ents.emplace_back(to_id); 
             } 
             // If we are going through a higher level, then set
