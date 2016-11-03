@@ -99,8 +99,7 @@ namespace flecsi
       r |= local_id_t(domain_) << 2; 
       r |= local_id_t(partition_) << 4; 
       r |= local_id_t(entity_) << 4 + PBITS;
-
-      return *reinterpret_cast<const local_id_t*>(this);
+      return r;
     }
 
     size_t global_id() const
