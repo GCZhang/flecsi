@@ -86,7 +86,7 @@ bool intersects(
       ++first1;
       continue;
     } 
-    if ( comp(*first2 < *first1) ) {
+    if ( comp(*first2, *first1) ) {
       ++first2;
       continue;
     } 
