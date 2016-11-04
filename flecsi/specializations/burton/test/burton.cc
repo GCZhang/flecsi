@@ -440,7 +440,6 @@ TEST_F(Burton, state) {
 
 // A final test to compare the blessed file and do CINCH_DUMP().
 TEST_F(Burton, cinch_dump) {
-  cout << CINCH_DUMP() << endl;
   CINCH_ASSERT(TRUE, CINCH_EQUAL_BLESSED("burton.blessed"));
 }
 
