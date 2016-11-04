@@ -98,7 +98,7 @@ namespace flecsi
       local_id_t r = dimension_;
       r |= local_id_t(domain_) << 2; 
       r |= local_id_t(partition_) << 4; 
-      r |= local_id_t(entity_) << 4 + PBITS;
+      r |= local_id_t(entity_) << (4 + PBITS);
       return r;
     }
 
