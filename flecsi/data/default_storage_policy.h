@@ -518,6 +518,19 @@ class default_data_storage_policy_t
     }
 
     /*!
+      \brief The output operator.
+
+      \param [in,out] os  A reference to the output stream.
+      \param [in]     a   A constant reference to the accessor object.
+      \return A reference to the output stream.
+     */
+    friend std::ostream &operator<<( std::ostream &os, const global_accessor_t &a )
+    { 
+      os << *a.data_;
+      return os;            
+    }
+
+    /*!
       \brief Return the user meta data for this data variable.
 
       \return The user meta data.

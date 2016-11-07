@@ -177,13 +177,14 @@ public:
           case 1:
             return mesh->make<Wedge>();
           default:
-            assert(false);
+            abort();
         }
         break;
       }
       default:
-        assert(false);
+        abort();
     }
+    return nullptr;
   }
 };
 
@@ -249,7 +250,8 @@ TEST(serialize, unserialize_mesh) {
 
   mesh->unserialize(buf);
 
-  mesh->dump();
+  // doesn't affect the tests since its not captured
+  // mesh->dump();
 
   for(auto cell : mesh->entities<2>()) {
     CINCH_CAPTURE() << "------- cell id: " << cell.id() << endl;

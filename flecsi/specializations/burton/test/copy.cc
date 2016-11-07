@@ -88,6 +88,7 @@ TEST(copy, copy) {
       << " with coordinates " << v->coordinates() << std::endl;
   } // for
 
+  // std::cout << CINCH_DUMP() << std::endl;
 } // TEST
 
 /*~------------------------------------------------------------------------~--*

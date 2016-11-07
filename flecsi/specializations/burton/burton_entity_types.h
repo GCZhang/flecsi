@@ -369,8 +369,13 @@ public:
         return {2, 2, 2, 2, 2, 2, 2, 2};
 
       default:
-        assert(false && "Unknown bound entity type");
+        std::cerr << "Unknown bound entity type" << std::endl;
+        abort();
     } // switch
+
+    // should never get here
+    return {}; 
+
   } // create_bound_entities
 
 }; // class burton_quadrilateral_cell_t

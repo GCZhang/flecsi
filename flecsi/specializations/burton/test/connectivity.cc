@@ -57,7 +57,8 @@ protected:
 
 TEST_F(Burton, connectivity) {
   connectivity_t c = b.get_connectivity(0, 0, 2, 2);
-  c.dump();
+  // doesn't affect the test since it's not captured
+  // c.dump();
 } // TEST
 
 /*----------------------------------------------------------------------------*

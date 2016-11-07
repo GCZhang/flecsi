@@ -123,7 +123,8 @@ struct burton_mesh_types_t {
           case 1:
             return mesh->make<burton_edge_t>(*mesh);
           default:
-            assert(false && "invalid topological dimension");
+            std::cerr << "invalid topological dimension" << std::endl;
+            abort();
         }
         break;
       }
@@ -134,13 +135,17 @@ struct burton_mesh_types_t {
           case 1:
             return mesh->make<burton_wedge_t>(*mesh);
           default:
-            assert(false && "invalid topological dimension");
+            std::cerr << "invalid topological dimension" << std::endl;
+            abort();
         }
         break;
       }
       default:
-        assert(false && "invalid domain");
+        std::cerr << "invalid domain" << std::endl;
+        abort();
     }
+    // should never get here 
+    return nullptr;
   }
 
 }; // struct burton_mesh_types_t

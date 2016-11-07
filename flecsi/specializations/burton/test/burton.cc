@@ -74,7 +74,8 @@ TEST_F(Burton, dump) {
   CINCH_CAPTURE() << "dump" << endl;
   CINCH_CAPTURE() << separator;
 
-  b.dump();
+  // doesn't affect the tests since its not captured
+  // b.dump();
 }
 
 TEST_F(Burton, mesh) {
@@ -440,6 +441,7 @@ TEST_F(Burton, state) {
 
 // A final test to compare the blessed file and do CINCH_DUMP().
 TEST_F(Burton, cinch_dump) {
+  //cout << CINCH_DUMP() << endl;
   CINCH_ASSERT(TRUE, CINCH_EQUAL_BLESSED("burton.blessed"));
 }
 
