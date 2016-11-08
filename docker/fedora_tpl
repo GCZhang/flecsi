@@ -41,7 +41,7 @@ RUN if [ ${WERROR} ]; then export CXXFLAGS="-Werror"; fi; \
           ${COVERAGE:+-DENABLE_COVERAGE_BUILD=ON} ..
 
 RUN make VERBOSE=1 -j2
-RUN make test
+RUN make test ARGS=-V
 RUN make install DESTDIR=${PWD}
 RUN cd .. && if [ ${COVERAGE} ]; then $HOME/.local/bin/codecov; fi && cd -
 USER root
