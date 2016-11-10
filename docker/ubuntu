@@ -10,6 +10,11 @@ ARG TRAVIS_REPO_SLUG
 ARG TRAVIS_BRANCH
 ARG TRAVIS_COMMIT
 ARG COVERAGE
+ARG COMPILER
+
+ENV CXXFLAGS=${WERROR:+-Werror}
+ENV CXX=${COMPILER:+clang++}
+ENV CC=${COMPILER:+clang}
 
 WORKDIR /home/flecsi
 RUN git clone --recursive https://github.com/losalamos/flecsi.git
@@ -29,8 +34,7 @@ RUN if [ ${TRAVIS} = true ]; then \
 RUN mkdir build
 
 WORKDIR build
-RUN if [ ${WERROR} ]; then export CXXFLAGS="-Werror"; fi; \
-    CC=gcc-6 CXX=g++-6 cmake -DENABLE_MPI=$MPI \
+RUN CC=${CC:-gcc-6} CXX=${CXX:-g++-6} cmake -DENABLE_MPI=$MPI \
           -DFLECSI_RUNTIME_MODEL=$RUNTIME \
           ${MINIMAL:+-DCMAKE_DISABLE_FIND_PACKAGE_EXODUSII=ON \
           -DCMAKE_DISABLE_FIND_PACKAGE_SCOTCH=ON \
